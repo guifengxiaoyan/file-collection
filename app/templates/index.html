@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    {% if announcements %}
+    <section class="announcement-section">
+        <div class="section-header-tech">
+            <div class="tech-icon"><i class="fas fa-bullhorn"></i></div>
+            <h2>公告栏</h2>
+            <div class="tech-line"></div>
+        </div>
+        <div class="announcements">
+            {% for announcement in announcements %}
+            <div class="announcement-item">
+                <div class="announcement-glow"></div>
+                <div class="announcement-content">
+                    <h3><i class="fas fa-sticky-note"></i> {{ announcement.title }}</h3>
+                    {% if announcement.content %}
+                    <p>{{ announcement.content }}</p>
+                    {% endif %}
+                    <div class="announcement-footer">
+                        {% if announcement.attachments %}
+                        <div class="attachment-list">
+                            {% for att in announcement.attachments %}
+                            <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}" class="btn-download">
+                                <i class="fas fa-download"></i> {{ att.original_name }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <span class="announcement-date"><i class="far fa-clock"></i> {{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="themes-section">
+        <div class="section-header-tech">
+            <div class="tech-icon"><i class="fas fa-folder-open"></i></div>
+            <h2>收集主题列表</h2>
+            <div class="tech-line"></div>
+        </div>
+        {% if themes %}
+        <div class="themes-grid">
+            {% for theme in themes %}
+            <a href="{{ url_for('theme_detail', theme_id=theme.id) }}" class="theme-card theme-link">
+                <div class="theme-card-glow"></div>
+                <div class="theme-card-border"></div>
+                <div class="theme-card-content">
+                    <h3><i class="fas fa-folder"></i> {{ theme.title }}</h3>
+                    {% if theme.description %}
+                    <p class="theme-desc">{{ theme.description }}</p>
+                    {% endif %}
+                    <div class="theme-meta">
+                        <span><i class="far fa-calendar-alt"></i> 截止：{{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
+                        <span class="time-remaining"><i class="fas fa-hourglass-half"></i> 剩余：{{ theme.deadline|time_remaining }}</span>
+                    </div>
+                    <div class="time-progress-bar">
+                        <div class="time-progress-fill {% if theme.deadline|time_remaining == '已截止' %}expired{% elif theme.deadline|time_progress(theme.created_at) < 30 %}danger{% elif theme.deadline|time_progress(theme.created_at) < 60 %}warning{% endif %}" style="width: {% if theme.deadline|time_remaining == '已截止' %}100{% else %}{{ theme.deadline|time_progress(theme.created_at) }}{% endif %}%;"></div>
+                    </div>
+                    {% if theme.collector_name %}
+                    <div class="theme-collector"><i class="fas fa-user"></i> 收集人：{{ theme.collector_name }}</div>
+                    {% endif %}
+                    <div class="theme-stats">
+                        <span class="completed-count"><i class="fas fa-check-circle"></i> 已完成：{{ theme.collection_objects|selectattr('is_completed')|list|length }}</span>
+                        <span class="total-count"><i class="fas fa-users"></i> 共 {{ theme.collection_objects|length }} 人</span>
+                    </div>
+                    <div class="theme-action-hint">
+                        <i class="fas fa-arrow-right"></i> 点击进入详情
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+            <p>暂无收集主题</p>
+            <span>等待管理员创建收集主题</span>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

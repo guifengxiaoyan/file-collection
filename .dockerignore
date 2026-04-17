@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+entrypoint.sh
+*.db
+instance
+uploads
+!.gitkeep

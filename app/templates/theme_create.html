@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}创建收集主题{% endblock %}
+
+{% block content %}
+<div class="container form-container">
+    <h2><i class="fas fa-plus-circle"></i> 创建收集主题</h2>
+    <form method="POST" enctype="multipart/form-data" class="theme-form">
+        <div class="form-group">
+            <label><i class="fas fa-folder"></i> 主题名称 *</label>
+            <input type="text" name="title" required placeholder="输入主题名称">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-file-alt"></i> 描述说明</label>
+            <textarea name="description" rows="3" placeholder="输入主题描述（可选）"></textarea>
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-bullhorn"></i> 主题公告</label>
+            <textarea name="announcement" rows="4" placeholder="输入主题公告内容，访问者可在主题页和上传页面看到此公告"></textarea>
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-calendar-alt"></i> 截止时间 *</label>
+            <input type="datetime-local" name="deadline" required>
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-user"></i> 收集人</label>
+            <input type="text" name="collector_name" placeholder="输入收集人姓名（可选）">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-paperclip"></i> 附件（可上传多个）</label>
+            <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
+            <label for="attachment-input" class="btn btn-secondary" style="cursor:pointer;">
+                <i class="fas fa-upload"></i> 选择文件
+            </label>
+            <div id="file-list" style="margin-top: 10px; color: var(--text-secondary);">
+                <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-plus"></i> 创建主题
+            </button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 取消
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function updateFileList() {
+    var input = document.getElementById('attachment-input');
+    var fileList = document.getElementById('file-list');
+    var files = input.files;
+    if (files.length > 0) {
+        var html = '<i class="fas fa-files"></i> 已选择 ' + files.length + ' 个文件：<br>';
+        for (var i = 0; i < files.length; i++) {
+            html += '<span style="display:inline-block; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + files[i].name + '</span>';
+        }
+        fileList.innerHTML = html;
+    } else {
+        fileList.innerHTML = '<i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式';
+    }
+}
+</script>
+{% endblock %}

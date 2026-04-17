@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}文件收集系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+    <div class="bg-particles"></div>
+    
+    <header>
+        <div class="header-bg">
+            <div class="circuit-line"></div>
+            <div class="circuit-line"></div>
+            <div class="circuit-line"></div>
+        </div>
+        <h1><i class="fas fa-cloud-upload-alt"></i> 文件收集系统</h1>
+        <div class="header-decoration">
+            <span class="deco-dot"></span>
+            <span class="deco-dot"></span>
+            <span class="deco-dot"></span>
+        </div>
+    </header>
+    
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <div class="footer-decoration">
+            <div class="footer-line"></div>
+            <div class="footer-icon"><i class="fas fa-shield-alt"></i></div>
+            <div class="footer-line"></div>
+        </div>
+        <p>文件收集系统 - 安全可靠的数据收集平台</p>
+        <div class="footer-tech">
+            <span><i class="fas fa-lock"></i> SSL加密</span>
+            <span><i class="fas fa-server"></i> 云端存储</span>
+            <span><i class="fas fa-shield-alt"></i> 安全防护</span>
+        </div>
+    </footer>
+</body>
+</html>

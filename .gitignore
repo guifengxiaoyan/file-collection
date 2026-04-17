@@ -174,3 +174,9 @@
 *.lz
 *.lzma
 *.iso
+
+# Project specific
+uploads/
+instance/
+*.db
+file-collection-deploy.zip

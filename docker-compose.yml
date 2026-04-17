@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    container_name: file-collection
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./data:/app/instance
+    environment:
+      - SECRET_KEY=your-secret-key-change-in-production
+      - FLASK_ENV=production
+    restart: unless-stopped
