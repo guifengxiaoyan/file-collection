@@ -222,6 +222,7 @@ def register_routes(app):
             if 'objects_excel_file' in request.files:
                 file = request.files.get('objects_excel_file')
                 if file and file.filename and file.filename.endswith(('.xls', '.xlsx')):
+                    file.seek(0)
                     wb = openpyxl.load_workbook(file)
                     ws = wb.active
                     for row in ws.iter_rows(values_only=True):

@@ -3,34 +3,40 @@
 {% block content %}
 <div class="container">
     {% if announcements %}
-    <section class="announcement-section">
+    <section class="announcement-section homepage-announcement">
         <div class="section-header-tech">
             <div class="tech-icon"><i class="fas fa-bullhorn"></i></div>
             <h2>公告栏</h2>
             <div class="tech-line"></div>
         </div>
-        <div class="announcements">
+        <div class="announcements-grid">
             {% for announcement in announcements %}
-            <div class="announcement-item">
+            <div class="announcement-card">
                 <div class="announcement-glow"></div>
-                <div class="announcement-content">
-                    <h3><i class="fas fa-sticky-note"></i> {{ announcement.title }}</h3>
-                    {% if announcement.content %}
-                    <p>{{ announcement.content }}</p>
-                    {% endif %}
-                    <div class="announcement-footer">
-                        {% if announcement.attachments %}
-                        <div class="attachment-list">
-                            {% for att in announcement.attachments %}
-                            <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}" class="btn-download">
-                                <i class="fas fa-download"></i> {{ att.original_name }}
-                            </a>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
+                <div class="announcement-card-header">
+                    <div class="announcement-icon-wrap">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <div class="announcement-title-area">
+                        <h3>{{ announcement.title }}</h3>
                         <span class="announcement-date"><i class="far fa-clock"></i> {{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
                     </div>
                 </div>
+                {% if announcement.content %}
+                <div class="announcement-card-content">
+                    <p>{{ announcement.content }}</p>
+                </div>
+                {% endif %}
+                {% if announcement.attachments %}
+                <div class="announcement-card-attachments">
+                    <i class="fas fa-paperclip"></i>
+                    {% for att in announcement.attachments %}
+                    <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}" class="btn-download">
+                        <i class="fas fa-download"></i> {{ att.original_name }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -68,9 +74,17 @@
                         <span class="completed-count"><i class="fas fa-check-circle"></i> 已完成：{{ theme.collection_objects|selectattr('is_completed')|list|length }}</span>
                         <span class="total-count"><i class="fas fa-users"></i> 共 {{ theme.collection_objects|length }} 人</span>
                     </div>
-                    <div class="theme-action-hint">
-                        <i class="fas fa-arrow-right"></i> 点击进入详情
+                    {% set incomplete_objs = theme.collection_objects|selectattr('is_completed', 'equalto', False)|list %}
+                    {% if incomplete_objs %}
+                    <div class="theme-incomplete-names">
+                        <div class="incomplete-label"><i class="fas fa-user-clock"></i> 待上传人员：</div>
+                        <div class="incomplete-items">
+                            {% for obj in incomplete_objs %}
+                            <span class="incomplete-tag">{{ obj.name }}</span>
+                            {% endfor %}
+                        </div>
                     </div>
+                    {% endif %}
                 </div>
             </a>
             {% endfor %}

@@ -103,28 +103,47 @@ function handleObjectsExcel() {
         
         var reader = new FileReader();
         reader.onload = function(e) {
-            var data = new Uint8Array(e.target.result);
-            var workbook = XLSX.read(data, {type: 'array'});
-            var sheetName = workbook.SheetNames[0];
-            var sheet = workbook.Sheets[sheetName];
-            var range = XLSX.utils.decode_range(sheet['!ref']);
-            
-            var names = [];
-            for (var row = range.s.r; row <= range.e.r; row++) {
-                var cellAddress = XLSX.utils.encode_cell({r: row, c: 0});
-                var cell = sheet[cellAddress];
-                if (cell && cell.v) {
-                    var name = String(cell.v).trim();
-                    if (name) names.push(name);
+            try {
+                var data = new Uint8Array(e.target.result);
+                var workbook = XLSX.read(data, {type: 'array'});
+                var sheetName = workbook.SheetNames[0];
+                var sheet = workbook.Sheets[sheetName];
+                
+                if (!sheet || !sheet['!ref']) {
+                    alert('Excel文件内容为空');
+                    return;
                 }
+                
+                var range = XLSX.utils.decode_range(sheet['!ref']);
+                
+                var names = [];
+                for (var row = range.s.r; row <= range.e.r; row++) {
+                    var cellAddress = XLSX.utils.encode_cell({r: row, c: 0});
+                    var cell = sheet[cellAddress];
+                    if (cell && cell.v !== undefined && cell.v !== null) {
+                        var name = String(cell.v).trim();
+                        if (name) names.push(name);
+                    }
+                }
+                
+                if (names.length === 0) {
+                    alert('未在Excel中找到有效数据');
+                    return;
+                }
+                
+                if (textarea.value.trim() === '') {
+                    textarea.value = names.join('\n');
+                } else {
+                    textarea.value = textarea.value.trim() + '\n' + names.join('\n');
+                }
+                updateObjectsCount();
+            } catch (error) {
+                console.error('Excel解析错误:', error);
+                alert('Excel文件解析失败，请确保文件格式正确');
             }
-            
-            if (textarea.value.trim() === '') {
-                textarea.value = names.join('\n');
-            } else {
-                textarea.value = textarea.value.trim() + '\n' + names.join('\n');
-            }
-            updateObjectsCount();
+        };
+        reader.onerror = function() {
+            alert('文件读取失败');
         };
         reader.readAsArrayBuffer(file);
     }
