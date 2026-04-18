@@ -197,6 +197,7 @@ def register_routes(app):
             announcement = request.form.get('announcement')
             deadline = request.form.get('deadline')
             collector_name = request.form.get('collector_name')
+            collector_objects_text = request.form.get('collector_objects', '')
             
             theme = CollectionTheme(
                 title=title,
@@ -207,6 +208,30 @@ def register_routes(app):
             )
             db.session.add(theme)
             db.session.commit()
+            
+            # 处理文本输入的收集对象
+            if collector_objects_text.strip():
+                object_names = collector_objects_text.strip().split('\n')
+                for name in object_names:
+                    name = name.strip()
+                    if name:
+                        obj = CollectionObject(name=name, theme_id=theme.id)
+                        db.session.add(obj)
+            
+            # 处理Excel导入的收集对象
+            if 'objects_excel_file' in request.files:
+                file = request.files.get('objects_excel_file')
+                if file and file.filename and file.filename.endswith(('.xls', '.xlsx')):
+                    wb = openpyxl.load_workbook(file)
+                    ws = wb.active
+                    for row in ws.iter_rows(values_only=True):
+                        if row and len(row) > 0:
+                            cell = row[0]
+                            if cell is not None:
+                                name = str(cell).strip()
+                                if name:
+                                    obj = CollectionObject(name=name, theme_id=theme.id)
+                                    db.session.add(obj)
             
             if 'attachments' in request.files:
                 files = request.files.getlist('attachments')

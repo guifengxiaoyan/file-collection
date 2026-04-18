@@ -2,6 +2,11 @@
 
 {% block title %}创建收集主题{% endblock %}
 
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+{{ super() }}
+{% endblock %}
+
 {% block content %}
 <div class="container form-container">
     <h2><i class="fas fa-plus-circle"></i> 创建收集主题</h2>
@@ -24,7 +29,22 @@
         </div>
         <div class="form-group">
             <label><i class="fas fa-user"></i> 收集人</label>
-            <input type="text" name="collector_name" placeholder="输入收集人姓名（可选）">
+            <input type="text" name="collector_name" id="collector_name" placeholder="输入收集人姓名（可选）">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-users"></i> 收集对象（一行一个）</label>
+            <textarea name="collector_objects" id="collector_objects" rows="6" placeholder="从粘贴板粘贴多个收集对象名称，一行一个，例如：
+张三
+李四
+王五"></textarea>
+            <div style="margin-top: 8px;">
+                <input type="file" name="objects_excel_file" id="objects_excel_input" accept=".xls,.xlsx" style="display:none;" onchange="handleObjectsExcel()">
+                <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('objects_excel_input').click()">
+                    <i class="fas fa-file-import"></i> Excel导入收集对象
+                </button>
+                <span id="objects_excel_name" style="margin-left: 10px; color: var(--text-secondary); font-size: 13px;"></span>
+            </div>
+            <div id="collector_objects_count" style="margin-top: 8px; color: var(--primary); font-size: 13px;"></div>
         </div>
         <div class="form-group">
             <label><i class="fas fa-paperclip"></i> 附件（可上传多个）</label>
@@ -62,5 +82,54 @@ function updateFileList() {
         fileList.innerHTML = '<i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式';
     }
 }
+
+function updateObjectsCount() {
+    var textarea = document.getElementById('collector_objects');
+    var countDiv = document.getElementById('collector_objects_count');
+    var lines = textarea.value.split('\n').filter(line => line.trim() !== '');
+    countDiv.textContent = '已添加 ' + lines.length + ' 个收集对象';
+}
+
+document.getElementById('collector_objects').addEventListener('input', updateObjectsCount);
+
+function handleObjectsExcel() {
+    var input = document.getElementById('objects_excel_input');
+    var nameSpan = document.getElementById('objects_excel_name');
+    var textarea = document.getElementById('collector_objects');
+    
+    if (input.files.length > 0) {
+        var file = input.files[0];
+        nameSpan.textContent = '已选择: ' + file.name;
+        
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, {type: 'array'});
+            var sheetName = workbook.SheetNames[0];
+            var sheet = workbook.Sheets[sheetName];
+            var range = XLSX.utils.decode_range(sheet['!ref']);
+            
+            var names = [];
+            for (var row = range.s.r; row <= range.e.r; row++) {
+                var cellAddress = XLSX.utils.encode_cell({r: row, c: 0});
+                var cell = sheet[cellAddress];
+                if (cell && cell.v) {
+                    var name = String(cell.v).trim();
+                    if (name) names.push(name);
+                }
+            }
+            
+            if (textarea.value.trim() === '') {
+                textarea.value = names.join('\n');
+            } else {
+                textarea.value = textarea.value.trim() + '\n' + names.join('\n');
+            }
+            updateObjectsCount();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+window.addEventListener('load', updateObjectsCount);
 </script>
 {% endblock %}
