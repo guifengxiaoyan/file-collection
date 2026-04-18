@@ -24,8 +24,8 @@
 ### Docker 部署（推荐）
 
 ```bash
-# 1. 解压部署包
-unzip file-collection-deploy.zip
+# 1. 下载部署包
+git clone https://github.com/guifengxiaoyan/file-collection.git
 
 # 2. 进入项目目录
 cd file-collection
