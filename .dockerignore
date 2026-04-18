@@ -6,7 +6,6 @@ __pycache__
 .dockerignore
 Dockerfile
 docker-compose.yml
-entrypoint.sh
 *.db
 instance
 uploads
