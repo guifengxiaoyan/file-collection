@@ -12,11 +12,6 @@
             <div class="announcement-title-area">
                 <h3>{{ theme.title }}</h3>
             </div>
-            <div class="announcement-deadline">
-                <span class="deadline-label">剩余时间</span>
-                <i class="fas fa-hourglass-half"></i>
-                <span>{{ theme.deadline|time_remaining }}</span>
-            </div>
         </div>
         <div class="announcement-body">
             <div class="announcement-content">
@@ -41,6 +36,10 @@
             <div class="tech-icon"><i class="fas fa-list"></i></div>
             <h3>收集对象</h3>
             <div class="tech-line"></div>
+            <div class="section-deadline">
+                <i class="fas fa-hourglass-half"></i>
+                <span>{{ theme.deadline|time_remaining }}</span>
+            </div>
         </div>
         <div class="objects-grid">
             {% for obj in objects %}
@@ -58,8 +57,9 @@
                     <span class="object-status pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
                     {% endif %}
                 </div>
-                <div class="object-arrow">
-                    <i class="fas fa-chevron-right"></i>
+                <div class="object-deadline">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ theme.deadline|time_remaining }}</span>
                 </div>
             </a>
             {% endfor %}
