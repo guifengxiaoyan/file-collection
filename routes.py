@@ -441,6 +441,54 @@ def register_routes(app):
         flash('公告已删除', 'success')
         return redirect(url_for('admin_dashboard'))
 
+    @app.route('/admin/announcement/<int:announcement_id>/edit', methods=['GET', 'POST'])
+    @login_required
+    def edit_announcement(announcement_id):
+        announcement = Announcement.query.get_or_404(announcement_id)
+        if request.method == 'POST':
+            announcement.title = request.form.get('title')
+            announcement.content = request.form.get('content')
+            db.session.commit()
+            
+            if 'attachments' in request.files:
+                files = request.files.getlist('attachments')
+                for file in files:
+                    if file and file.filename and allowed_file(file.filename, Config.ALLOWED_EXTENSIONS):
+                        original_name = file.filename
+                        filename = secure_filename(original_name)
+                        folder = get_announcement_folder()
+                        counter = 1
+                        while os.path.exists(os.path.join(folder, filename)):
+                            name, ext = os.path.splitext(original_name)
+                            filename = f"{name}_{counter}{ext}"
+                            counter += 1
+                        file_path = os.path.join(folder, filename)
+                        file.save(file_path)
+                        
+                        att = AnnouncementAttachment(
+                            filename=filename,
+                            original_name=original_name,
+                            announcement_id=announcement.id
+                        )
+                        db.session.add(att)
+            db.session.commit()
+            flash('公告已更新', 'success')
+            return redirect(url_for('admin_dashboard'))
+        return render_template('announcement_edit.html', announcement=announcement)
+
+    @app.route('/admin/announcement/attachment/<int:attachment_id>/delete', methods=['GET', 'POST'])
+    @login_required
+    def delete_announcement_attachment(attachment_id):
+        attachment = AnnouncementAttachment.query.get_or_404(attachment_id)
+        announcement_id = attachment.announcement_id
+        file_path = os.path.join(get_announcement_folder(), attachment.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        db.session.delete(attachment)
+        db.session.commit()
+        flash('附件已删除', 'success')
+        return redirect(url_for('edit_announcement', announcement_id=announcement_id))
+
     @app.route('/admin/theme/<int:theme_id>/edit', methods=['GET', 'POST'])
     @login_required
     def edit_theme(theme_id):

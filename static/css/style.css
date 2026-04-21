@@ -1383,6 +1383,48 @@ main {
     margin-top: 30px;
 }
 
+.admin-main-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0;
+}
+
+.main-tab-btn {
+    padding: 12px 25px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.main-tab-btn:hover {
+    color: var(--primary);
+}
+
+.main-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.main-tab-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .admin-overview {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -2790,14 +2832,19 @@ footer {
 .upload-actions {
     padding: 15px 25px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     align-items: center;
 }
 
 .upload-btn-wrap {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 20px;
+}
+
+.upload-btn-wrap .btn {
+    flex-shrink: 0;
 }
 
 .upload-actions .upload-hint {
@@ -2806,6 +2853,7 @@ footer {
     gap: 6px;
     color: var(--text-secondary);
     font-size: 13px;
+    flex-shrink: 0;
 }
 
 .upload-actions .upload-hint i {
@@ -2996,6 +3044,8 @@ footer {
 .btn-lg {
     padding: 15px 35px;
     font-size: 16px;
+    min-width: 160px;
+    text-align: center;
 }
 
 .upload-container {
@@ -3016,7 +3066,7 @@ footer {
     .theme-meta-section { width: 100%; }
     .upload-page-header { flex-direction: column; align-items: flex-start; }
     .upload-meta { width: 100%; }
-    .upload-page-actions { flex-direction: column; }
+    .upload-page-actions { flex-direction: column; align-items: center; }
     .upload-page-actions .btn { width: 100%; justify-content: center; }
     .file-actions { flex-direction: column; align-items: flex-start; gap: 10px; }
 }

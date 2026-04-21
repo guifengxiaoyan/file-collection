@@ -83,7 +83,7 @@
                         <button type="submit" class="btn btn-success" id="upload-btn" disabled>
                             <i class="fas fa-upload"></i> 上传文件
                         </button>
-                        <span class="upload-hint"><i class="fas fa-info-circle"></i> 上传附件后点击"完成上传"确认，或关闭页面自动完成</span>
+                        <span class="upload-hint"><i class="fas fa-info-circle"></i> 选择附件后点击"上传文件"然后再点击"完成上传"确认，或关闭页面自动完成</span>
                     </div>
                 </div>
             </form>
@@ -105,9 +105,11 @@
                     </div>
                     <div class="file-actions">
                         <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% if not obj.is_completed %}
                         <button type="button" class="btn btn-danger btn-small" onclick="deleteAttachment({{ att.id }})">
                             <i class="fas fa-trash"></i> 删除
                         </button>
+                        {% endif %}
                     </div>
                 </li>
                 {% endfor %}
@@ -116,15 +118,14 @@
         {% endif %}
 
         <div class="upload-page-actions">
-            <form method="POST" style="display:inline;" id="finish-form">
-                <button type="submit" name="finish" class="btn btn-primary btn-lg" id="finish-btn" disabled>
-                    <i class="fas fa-check"></i> 完成上传
-                </button>
-            </form>
+            <button type="submit" form="finish-form" name="finish" class="btn btn-primary btn-lg" id="finish-btn" disabled>
+                <i class="fas fa-check"></i> 完成上传
+            </button>
             <a href="{{ url_for('theme_detail', theme_id=theme.id) }}" class="btn btn-secondary btn-lg">
                 <i class="fas fa-arrow-left"></i> 返回
             </a>
         </div>
+        <form method="POST" id="finish-form" style="display:none;"></form>
     </div>
 </div>
 

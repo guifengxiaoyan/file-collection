@@ -18,236 +18,264 @@
         </div>
     </div>
 
-    <div class="admin-overview">
-        <div class="overview-card">
-            <div class="overview-icon" style="background: rgba(0, 212, 255, 0.15);">
-                <i class="fas fa-folder" style="color: var(--primary);"></i>
+    <div class="admin-main-tabs">
+        <button class="main-tab-btn active" data-tab="overview" onclick="showMainTab('overview')">
+            <i class="fas fa-chart-bar"></i> 概览
+        </button>
+        <button class="main-tab-btn" data-tab="announcements" onclick="showMainTab('announcements')">
+            <i class="fas fa-bullhorn"></i> 公告管理
+        </button>
+        <button class="main-tab-btn" data-tab="themes" onclick="showMainTab('themes')">
+            <i class="fas fa-folder-open"></i> 主题管理
+        </button>
+    </div>
+
+    <div id="main-tab-overview" class="main-tab-content">
+        <div class="admin-overview">
+            <div class="overview-card">
+                <div class="overview-icon" style="background: rgba(0, 212, 255, 0.15);">
+                    <i class="fas fa-folder" style="color: var(--primary);"></i>
+                </div>
+                <div class="overview-content">
+                    <span class="overview-value">{{ themes|length }}</span>
+                    <span class="overview-label">全部主题</span>
+                </div>
             </div>
-            <div class="overview-content">
-                <span class="overview-value">{{ themes|length }}</span>
-                <span class="overview-label">全部主题</span>
+            <div class="overview-card">
+                <div class="overview-icon" style="background: rgba(0, 255, 136, 0.15);">
+                    <i class="fas fa-play" style="color: var(--success);"></i>
+                </div>
+                <div class="overview-content">
+                    <span class="overview-value">{{ themes|selectattr('is_active')|list|length }}</span>
+                    <span class="overview-label">进行中</span>
+                </div>
             </div>
-        </div>
-        <div class="overview-card">
-            <div class="overview-icon" style="background: rgba(0, 255, 136, 0.15);">
-                <i class="fas fa-play" style="color: var(--success);"></i>
+            <div class="overview-card">
+                <div class="overview-icon" style="background: rgba(255, 71, 87, 0.15);">
+                    <i class="fas fa-archive" style="color: var(--danger);"></i>
+                </div>
+                <div class="overview-content">
+                    <span class="overview-value">{{ themes|rejectattr('is_active')|list|length }}</span>
+                    <span class="overview-label">已归档</span>
+                </div>
             </div>
-            <div class="overview-content">
-                <span class="overview-value">{{ themes|selectattr('is_active')|list|length }}</span>
-                <span class="overview-label">进行中</span>
-            </div>
-        </div>
-        <div class="overview-card">
-            <div class="overview-icon" style="background: rgba(255, 71, 87, 0.15);">
-                <i class="fas fa-archive" style="color: var(--danger);"></i>
-            </div>
-            <div class="overview-content">
-                <span class="overview-value">{{ themes|rejectattr('is_active')|list|length }}</span>
-                <span class="overview-label">已归档</span>
-            </div>
-        </div>
-        <div class="overview-card">
-            <div class="overview-icon" style="background: rgba(124, 58, 237, 0.15);">
-                <i class="fas fa-bullhorn" style="color: var(--secondary);"></i>
-            </div>
-            <div class="overview-content">
-                <span class="overview-value">{{ announcements|length }}</span>
-                <span class="overview-label">公告数量</span>
+            <div class="overview-card">
+                <div class="overview-icon" style="background: rgba(124, 58, 237, 0.15);">
+                    <i class="fas fa-bullhorn" style="color: var(--secondary);"></i>
+                </div>
+                <div class="overview-content">
+                    <span class="overview-value">{{ announcements|length }}</span>
+                    <span class="overview-label">公告数量</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="admin-section-title">
-        <div class="section-header-tech">
-            <div class="tech-icon"><i class="fas fa-bullhorn"></i></div>
-            <h3>公告管理</h3>
-            <div class="tech-line"></div>
+    <div id="main-tab-announcements" class="main-tab-content" style="display:none;">
+        <div class="admin-section-title">
+            <div class="section-header-tech">
+                <div class="tech-icon"><i class="fas fa-bullhorn"></i></div>
+                <h3>公告列表</h3>
+                <div class="tech-line"></div>
+            </div>
+            <a href="{{ url_for('create_announcement') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 新建公告
+            </a>
         </div>
-        <a href="{{ url_for('create_announcement') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> 新建公告
-        </a>
+
+        {% if announcements %}
+        <div class="announcement-cards">
+            {% for ann in announcements %}
+            <div class="announcement-admin-card">
+                <div class="announcement-admin-glow"></div>
+                <div class="announcement-admin-header">
+                    <h4><i class="fas fa-bullhorn"></i> {{ ann.title }}</h4>
+                    <span class="announcement-date">{{ ann.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {% if ann.content %}
+                <p class="announcement-admin-content">{{ ann.content[:100] }}{% if ann.content|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                {% if ann.attachments %}
+                <div class="announcement-admin-attachments">
+                    <i class="fas fa-paperclip"></i>
+                    {% for att in ann.attachments %}
+                    <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}" class="btn-download">
+                        <i class="fas fa-download"></i> {{ att.original_name }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="announcement-admin-actions">
+                    <a href="{{ url_for('edit_announcement', announcement_id=ann.id) }}" class="btn btn-primary btn-small">
+                        <i class="fas fa-edit"></i> 编辑
+                    </a>
+                    <form method="POST" action="{{ url_for('delete_announcement', announcement_id=ann.id) }}" class="inline-form">
+                        <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('确定删除?')">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state-card">
+            <div class="empty-icon"><i class="fas fa-bullhorn"></i></div>
+            <p>暂无公告</p>
+        </div>
+        {% endif %}
     </div>
 
-    {% if announcements %}
-    <div class="announcement-cards">
-        {% for ann in announcements %}
-        <div class="announcement-admin-card">
-            <div class="announcement-admin-glow"></div>
-            <div class="announcement-admin-header">
-                <h4><i class="fas fa-bullhorn"></i> {{ ann.title }}</h4>
-                <span class="announcement-date">{{ ann.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    <div id="main-tab-themes" class="main-tab-content" style="display:none;">
+        <div class="admin-section-title">
+            <div class="section-header-tech">
+                <div class="tech-icon"><i class="fas fa-folder-open"></i></div>
+                <h3>收集主题</h3>
+                <div class="tech-line"></div>
             </div>
-            {% if ann.content %}
-            <p class="announcement-admin-content">{{ ann.content[:100] }}{% if ann.content|length > 100 %}...{% endif %}</p>
-            {% endif %}
-            {% if ann.attachments %}
-            <div class="announcement-admin-attachments">
-                <i class="fas fa-paperclip"></i>
-                {% for att in ann.attachments %}
-                <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}" class="btn-download">
-                    <i class="fas fa-download"></i> {{ att.original_name }}
-                </a>
+            <a href="{{ url_for('create_theme') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> 新建主题
+            </a>
+        </div>
+
+        <div class="theme-tabs">
+            <button class="tab-btn active" data-tab="active" onclick="showTab('active')">
+                <i class="fas fa-play"></i> 进行中 ({{ active_themes|length }})
+            </button>
+            <button class="tab-btn" data-tab="archived" onclick="showTab('archived')">
+                <i class="fas fa-archive"></i> 已归档 ({{ archived_themes|length }})
+            </button>
+        </div>
+
+        <div id="tab-active" class="tab-content">
+            {% if active_themes %}
+            <div class="theme-admin-cards">
+                {% for theme in active_themes %}
+                <div class="theme-admin-card">
+                    <div class="theme-admin-glow"></div>
+                    <div class="theme-admin-header">
+                        <div class="theme-admin-info">
+                            <h4><i class="fas fa-folder"></i> {{ theme.title }}</h4>
+                            {% if theme.collector_name %}
+                            <span class="theme-admin-collector"><i class="fas fa-user"></i> {{ theme.collector_name }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="status-badge active">
+                            <i class="fas fa-play"></i> 进行中
+                        </span>
+                    </div>
+                    <div class="theme-admin-meta">
+                        <span><i class="fas fa-calendar"></i> 截止：{{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% set completed_count = theme.collection_objects|selectattr('is_completed')|list|length %}
+                        {% set total_count = theme.collection_objects|length %}
+                        <span class="theme-progress">
+                            <i class="fas fa-chart-pie"></i> 进度：{{ completed_count }}/{{ total_count }}
+                        </span>
+                    </div>
+                    <div class="theme-admin-progress-bar">
+                        <div class="progress-fill" style="width: {% if total_count > 0 %}{{ (completed_count / total_count * 100)|int }}{% else %}0{% endif %}%;"></div>
+                    </div>
+                    <div class="theme-admin-actions">
+                        <a href="{{ url_for('manage_theme_objects', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
+                            <i class="fas fa-users-cog"></i> 管理
+                        </a>
+                        <a href="{{ url_for('edit_theme', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
+                            <i class="fas fa-edit"></i> 编辑
+                        </a>
+                        <a href="{{ url_for('export_theme_attachments', theme_id=theme.id) }}" class="btn btn-success btn-small">
+                            <i class="fas fa-download"></i> 导出
+                        </a>
+                        <form method="POST" action="{{ url_for('archive_theme', theme_id=theme.id) }}" class="inline-form">
+                            <button type="submit" class="btn btn-warning btn-small" onclick="return confirm('确定归档此主题？归档后将不在首页显示。')">
+                                <i class="fas fa-box"></i> 归档
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_theme', theme_id=theme.id) }}" class="inline-form">
+                            <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('确定删除此主题？')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 {% endfor %}
             </div>
+            {% else %}
+            <div class="empty-state-card">
+                <div class="empty-icon"><i class="fas fa-folder-open"></i></div>
+                <p>暂无进行中的主题</p>
+            </div>
             {% endif %}
-            <div class="announcement-admin-actions">
-                <form method="POST" action="{{ url_for('delete_announcement', announcement_id=ann.id) }}" class="inline-form">
-                    <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('确定删除?')">
-                        <i class="fas fa-trash"></i> 删除
-                    </button>
-                </form>
-            </div>
         </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state-card">
-        <div class="empty-icon"><i class="fas fa-bullhorn"></i></div>
-        <p>暂无公告</p>
-    </div>
-    {% endif %}
 
-    <div class="admin-section-title">
-        <div class="section-header-tech">
-            <div class="tech-icon"><i class="fas fa-folder-open"></i></div>
-            <h3>收集主题管理</h3>
-            <div class="tech-line"></div>
-        </div>
-        <a href="{{ url_for('create_theme') }}" class="btn btn-success">
-            <i class="fas fa-plus"></i> 新建主题
-        </a>
-    </div>
-
-    <div class="theme-tabs">
-        <button class="tab-btn active" data-tab="active" onclick="showTab('active')">
-            <i class="fas fa-play"></i> 进行中 ({{ active_themes|length }})
-        </button>
-        <button class="tab-btn" data-tab="archived" onclick="showTab('archived')">
-            <i class="fas fa-archive"></i> 已归档 ({{ archived_themes|length }})
-        </button>
-    </div>
-
-    <div id="tab-active" class="tab-content">
-        {% if active_themes %}
-        <div class="theme-admin-cards">
-            {% for theme in active_themes %}
-            <div class="theme-admin-card">
-                <div class="theme-admin-glow"></div>
-                <div class="theme-admin-header">
-                    <div class="theme-admin-info">
-                        <h4><i class="fas fa-folder"></i> {{ theme.title }}</h4>
-                        {% if theme.collector_name %}
-                        <span class="theme-admin-collector"><i class="fas fa-user"></i> {{ theme.collector_name }}</span>
-                        {% endif %}
+        <div id="tab-archived" class="tab-content" style="display:none;">
+            {% if archived_themes %}
+            <div class="theme-admin-cards">
+                {% for theme in archived_themes %}
+                <div class="theme-admin-card archived">
+                    <div class="theme-admin-glow"></div>
+                    <div class="theme-admin-header">
+                        <div class="theme-admin-info">
+                            <h4><i class="fas fa-folder"></i> {{ theme.title }}</h4>
+                            {% if theme.collector_name %}
+                            <span class="theme-admin-collector"><i class="fas fa-user"></i> {{ theme.collector_name }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="status-badge inactive">
+                            <i class="fas fa-archive"></i> 已归档
+                        </span>
                     </div>
-                    <span class="status-badge active">
-                        <i class="fas fa-play"></i> 进行中
-                    </span>
-                </div>
-                <div class="theme-admin-meta">
-                    <span><i class="fas fa-calendar"></i> 截止：{{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
-                    {% set completed_count = theme.collection_objects|selectattr('is_completed')|list|length %}
-                    {% set total_count = theme.collection_objects|length %}
-                    <span class="theme-progress">
-                        <i class="fas fa-chart-pie"></i> 进度：{{ completed_count }}/{{ total_count }}
-                    </span>
-                </div>
-                <div class="theme-admin-progress-bar">
-                    <div class="progress-fill" style="width: {% if total_count > 0 %}{{ (completed_count / total_count * 100)|int }}{% else %}0{% endif %}%;"></div>
-                </div>
-                <div class="theme-admin-actions">
-                    <a href="{{ url_for('manage_theme_objects', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
-                        <i class="fas fa-users-cog"></i> 管理
-                    </a>
-                    <a href="{{ url_for('edit_theme', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
-                        <i class="fas fa-edit"></i> 编辑
-                    </a>
-                    <a href="{{ url_for('export_theme_attachments', theme_id=theme.id) }}" class="btn btn-success btn-small">
-                        <i class="fas fa-download"></i> 导出
-                    </a>
-                    <form method="POST" action="{{ url_for('archive_theme', theme_id=theme.id) }}" class="inline-form">
-                        <button type="submit" class="btn btn-warning btn-small" onclick="return confirm('确定归档此主题？归档后将不在首页显示。')">
-                            <i class="fas fa-box"></i> 归档
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('delete_theme', theme_id=theme.id) }}" class="inline-form">
-                        <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('确定删除此主题？')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </form>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="empty-state-card">
-            <div class="empty-icon"><i class="fas fa-folder-open"></i></div>
-            <p>暂无进行中的主题</p>
-        </div>
-        {% endif %}
-    </div>
-
-    <div id="tab-archived" class="tab-content" style="display:none;">
-        {% if archived_themes %}
-        <div class="theme-admin-cards">
-            {% for theme in archived_themes %}
-            <div class="theme-admin-card archived">
-                <div class="theme-admin-glow"></div>
-                <div class="theme-admin-header">
-                    <div class="theme-admin-info">
-                        <h4><i class="fas fa-folder"></i> {{ theme.title }}</h4>
-                        {% if theme.collector_name %}
-                        <span class="theme-admin-collector"><i class="fas fa-user"></i> {{ theme.collector_name }}</span>
-                        {% endif %}
+                    <div class="theme-admin-meta">
+                        <span><i class="fas fa-calendar"></i> 截止：{{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
+                        {% set completed_count = theme.collection_objects|selectattr('is_completed')|list|length %}
+                        {% set total_count = theme.collection_objects|length %}
+                        <span class="theme-progress">
+                            <i class="fas fa-chart-pie"></i> 进度：{{ completed_count }}/{{ total_count }}
+                        </span>
                     </div>
-                    <span class="status-badge inactive">
-                        <i class="fas fa-archive"></i> 已归档
-                    </span>
+                    <div class="theme-admin-progress-bar">
+                        <div class="progress-fill" style="width: {% if total_count > 0 %}{{ (completed_count / total_count * 100)|int }}{% else %}0{% endif %}%;"></div>
+                    </div>
+                    <div class="theme-admin-actions">
+                        <a href="{{ url_for('manage_theme_objects', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
+                            <i class="fas fa-users-cog"></i> 管理
+                        </a>
+                        <a href="{{ url_for('edit_theme', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
+                            <i class="fas fa-edit"></i> 编辑
+                        </a>
+                        <a href="{{ url_for('export_theme_attachments', theme_id=theme.id) }}" class="btn btn-success btn-small">
+                            <i class="fas fa-download"></i> 导出
+                        </a>
+                        <form method="POST" action="{{ url_for('restore_theme', theme_id=theme.id) }}" class="inline-form">
+                            <button type="submit" class="btn btn-primary btn-small">
+                                <i class="fas fa-play"></i> 恢复
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_theme', theme_id=theme.id) }}" class="inline-form">
+                            <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('确定删除此主题？')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <div class="theme-admin-meta">
-                    <span><i class="fas fa-calendar"></i> 截止：{{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
-                    {% set completed_count = theme.collection_objects|selectattr('is_completed')|list|length %}
-                    {% set total_count = theme.collection_objects|length %}
-                    <span class="theme-progress">
-                        <i class="fas fa-chart-pie"></i> 进度：{{ completed_count }}/{{ total_count }}
-                    </span>
-                </div>
-                <div class="theme-admin-progress-bar">
-                    <div class="progress-fill" style="width: {% if total_count > 0 %}{{ (completed_count / total_count * 100)|int }}{% else %}0{% endif %}%;"></div>
-                </div>
-                <div class="theme-admin-actions">
-                    <a href="{{ url_for('manage_theme_objects', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
-                        <i class="fas fa-users-cog"></i> 管理
-                    </a>
-                    <a href="{{ url_for('edit_theme', theme_id=theme.id) }}" class="btn btn-secondary btn-small">
-                        <i class="fas fa-edit"></i> 编辑
-                    </a>
-                    <a href="{{ url_for('export_theme_attachments', theme_id=theme.id) }}" class="btn btn-success btn-small">
-                        <i class="fas fa-download"></i> 导出
-                    </a>
-                    <form method="POST" action="{{ url_for('restore_theme', theme_id=theme.id) }}" class="inline-form">
-                        <button type="submit" class="btn btn-primary btn-small">
-                            <i class="fas fa-play"></i> 恢复
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('delete_theme', theme_id=theme.id) }}" class="inline-form">
-                        <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('确定删除此主题？')">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </form>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            {% else %}
+            <div class="empty-state-card">
+                <div class="empty-icon"><i class="fas fa-archive"></i></div>
+                <p>暂无已归档的主题</p>
+            </div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="empty-state-card">
-            <div class="empty-icon"><i class="fas fa-archive"></i></div>
-            <p>暂无已归档的主题</p>
-        </div>
-        {% endif %}
     </div>
 
     <script>
+    function showMainTab(tab) {
+        document.querySelectorAll('.main-tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.main-tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('main-tab-' + tab).style.display = 'block';
+        document.querySelector('.main-tab-btn[data-tab="' + tab + '"]').classList.add('active');
+    }
+    
     function showTab(tab) {
         document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -255,4 +283,5 @@
         document.querySelector('.tab-btn[data-tab="' + tab + '"]').classList.add('active');
     }
     </script>
+</div>
 {% endblock %}

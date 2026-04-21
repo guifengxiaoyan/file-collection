@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}编辑公告{% endblock %}
+
+{% block content %}
+<div class="container form-container">
+    <h2><i class="fas fa-edit"></i> 编辑公告</h2>
+    <form method="POST" enctype="multipart/form-data" class="announcement-form">
+        <div class="form-group">
+            <label><i class="fas fa-heading"></i> 公告标题 *</label>
+            <input type="text" name="title" required placeholder="输入公告标题" value="{{ announcement.title }}">
+        </div>
+        <div class="form-group">
+            <label><i class="fas fa-file-alt"></i> 公告内容</label>
+            <textarea name="content" rows="5" placeholder="输入公告内容">{{ announcement.content or '' }}</textarea>
+        </div>
+        {% if announcement.attachments %}
+        <div class="form-group">
+            <label><i class="fas fa-paperclip"></i> 当前附件</label>
+            <div class="current-attachments">
+                {% for att in announcement.attachments %}
+                <div class="attachment-item">
+                    <span><i class="fas fa-file"></i> {{ att.original_name }}</span>
+                    <a href="{{ url_for('delete_announcement_attachment', attachment_id=att.id) }}" class="btn btn-danger btn-small" onclick="return confirm('确定删除此附件?')">
+                        <i class="fas fa-trash"></i> 删除
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label><i class="fas fa-upload"></i> 添加新附件（可上传多个）</label>
+            <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
+            <label for="attachment-input" class="btn btn-secondary" style="cursor:pointer;">
+                <i class="fas fa-upload"></i> 选择文件
+            </label>
+            <div id="file-list" style="margin-top: 10px; color: var(--text-secondary);">
+                <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> 保存修改
+            </button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 返回
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function updateFileList() {
+    var input = document.getElementById('attachment-input');
+    var fileList = document.getElementById('file-list');
+    var files = input.files;
+    if (files.length > 0) {
+        var html = '<i class="fas fa-files"></i> 已选择 ' + files.length + ' 个文件：<br>';
+        for (var i = 0; i < files.length; i++) {
+            html += '<span style="display:inline-block; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + files[i].name + '</span>';
+        }
+        fileList.innerHTML = html;
+    } else {
+        fileList.innerHTML = '<i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式';
+    }
+}
+</script>
+{% endblock %}
