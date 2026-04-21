@@ -2959,6 +2959,11 @@ footer {
     margin-left: auto;
 }
 
+.section-header-tech .section-deadline span:first-child {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
 .objects-section .objects-grid .object-item .object-deadline {
     display: flex;
     align-items: center;
@@ -2969,6 +2974,11 @@ footer {
     border-top: 1px solid var(--border-color);
     color: var(--danger);
     font-size: 12px;
+}
+
+.objects-section .objects-grid .object-item .object-deadline span:first-child {
+    color: var(--text-secondary);
+    font-weight: 400;
 }
 
 .theme-announcement-card .announcement-body {

@@ -37,6 +37,7 @@
             <h3>收集对象</h3>
             <div class="tech-line"></div>
             <div class="section-deadline">
+                <span>剩余时间</span>
                 <i class="fas fa-hourglass-half"></i>
                 <span>{{ theme.deadline|time_remaining }}</span>
             </div>
@@ -58,6 +59,7 @@
                     {% endif %}
                 </div>
                 <div class="object-deadline">
+                    <span>剩余</span>
                     <i class="fas fa-clock"></i>
                     <span>{{ theme.deadline|time_remaining }}</span>
                 </div>
