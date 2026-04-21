@@ -36,18 +36,6 @@
     </section>
     {% endif %}
 
-    <div class="upload-page-header">
-        <div class="upload-user-info">
-            <div class="upload-avatar upload-avatar-lg">
-                <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
-            </div>
-            <div class="upload-user-detail">
-                <h2>{{ obj.name }}</h2>
-                <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> {{ theme.deadline|time_remaining }}</span>
-            </div>
-        </div>
-    </div>
-
     <div class="upload-main-card">
         <div class="upload-card-header">
             <div class="upload-user-row">
@@ -100,8 +88,8 @@
                 </div>
             </form>
         </div>
+        {% endif %}
 
-        {% if attachments %}
         {% if attachments %}
         <div class="uploaded-files-card">
             <div class="uploaded-files-header">
