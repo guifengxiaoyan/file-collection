@@ -99,6 +99,11 @@
                     {% endif %}
                 </div>
                 <div class="object-actions">
+                    {% if obj.attachments %}
+                    <a href="{{ url_for('download_object_attachments', object_id=obj.id) }}" class="btn btn-success btn-small">
+                        <i class="fas fa-download"></i> 下载附件
+                    </a>
+                    {% endif %}
                     {% if obj.is_completed %}
                     <form method="POST" action="{{ url_for('reset_object_upload', object_id=obj.id) }}" class="inline-form">
                         <button type="submit" class="btn btn-secondary btn-small">
