@@ -2939,6 +2939,11 @@ footer {
     font-weight: 600;
 }
 
+.theme-announcement-card .announcement-deadline .deadline-label {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
 .theme-announcement-card .announcement-body {
     background: var(--bg-dark);
     border-radius: 12px;
