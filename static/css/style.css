@@ -2571,11 +2571,17 @@ footer {
     border-radius: 20px;
 }
 
+.upload-user-detail {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 .upload-user-detail h2 {
     font-family: 'Orbitron', sans-serif;
     font-size: 26px;
     color: var(--text-primary);
-    margin-bottom: 8px;
+    margin: 0;
 }
 
 .upload-user-detail p {
@@ -2594,7 +2600,6 @@ footer {
     color: var(--danger);
     font-size: 14px;
     font-weight: 600;
-    margin-top: 8px;
 }
 
 .upload-user-detail .deadline-remaining i {
