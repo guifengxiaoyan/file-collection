@@ -364,19 +364,23 @@ def register_routes(app):
             flash('该对象没有附件', 'error')
             return redirect(url_for('manage_theme_objects', theme_id=obj.theme_id))
         
-        import io
-        import zipfile
-        
-        memory_file = io.BytesIO()
-        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for att in attachments:
-                file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
-                if os.path.exists(file_path):
-                    zf.write(file_path, att.original_name)
-        memory_file.seek(0)
-        
-        archive_name = f"{obj.name}_附件.zip"
-        return send_file(memory_file, as_attachment=True, download_name=archive_name)
+        if len(attachments) == 1:
+            att = attachments[0]
+            file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
+            ext = os.path.splitext(att.original_name)[1]
+            download_name = f"{obj.name}{ext}"
+            return send_file(file_path, as_attachment=True, download_name=download_name)
+        else:
+            import io
+            import zipfile
+            memory_file = io.BytesIO()
+            with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for att in attachments:
+                    file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
+                    if os.path.exists(file_path):
+                        zf.write(file_path, f"{obj.name}_{att.original_name}")
+            memory_file.seek(0)
+            return send_file(memory_file, as_attachment=True, download_name=f"{obj.name}_附件.zip")
 
     @app.route('/admin/theme/<int:theme_id>/export')
     @login_required
