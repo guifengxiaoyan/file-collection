@@ -51,7 +51,7 @@ def register_routes(app):
     @app.route('/')
     def index():
         announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
-        themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.created_at.desc()).all()
+        themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.deadline.asc()).all()
         return render_template('index.html', announcements=announcements, themes=themes)
 
     @app.route('/theme/<int:theme_id>')
@@ -156,7 +156,7 @@ def register_routes(app):
     @app.route('/admin')
     @login_required
     def admin_dashboard():
-        active_themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.created_at.desc()).all()
+        active_themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.deadline.asc()).all()
         archived_themes = CollectionTheme.query.filter_by(is_active=False).order_by(CollectionTheme.created_at.desc()).all()
         announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
         return render_template('admin_dashboard.html', active_themes=active_themes, archived_themes=archived_themes, announcements=announcements)
