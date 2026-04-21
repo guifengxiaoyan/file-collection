@@ -2790,7 +2790,7 @@ footer {
 .upload-actions {
     padding: 15px 25px;
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-end;
     align-items: center;
 }
 
