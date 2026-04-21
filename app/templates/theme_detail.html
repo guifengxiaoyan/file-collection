@@ -46,22 +46,19 @@
             {% for obj in objects %}
             <a href="{{ url_for('upload_page', object_id=obj.id) }}" 
                class="object-item {% if obj.is_completed %}completed{% endif %}">
-                <div class="object-avatar">
+                <div class="object-top">
                     <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
                 </div>
-                <div class="object-info">
-                    <span class="object-name">{{ obj.name }}</span>
+                <div class="object-name">{{ obj.name }}</div>
+                <div class="object-status">
                     {% if obj.is_completed %}
-                    <span class="object-status completed"><i class="fas fa-check"></i> 已完成</span>
-                    <span class="object-attachments"><i class="fas fa-paperclip"></i> {{ obj.attachments|length }}个附件</span>
+                    <span class="status-completed"><i class="fas fa-check"></i> 已完成</span>
                     {% else %}
-                    <span class="object-status pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
+                    <span class="status-pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
                     {% endif %}
                 </div>
-                <div class="object-deadline">
-                    <span>剩余</span>
-                    <i class="fas fa-clock"></i>
-                    <span>{{ theme.deadline|time_remaining }}</span>
+                <div class="object-footer">
+                    <span><i class="fas fa-clock"></i> {{ theme.deadline|time_remaining }}</span>
                 </div>
             </a>
             {% endfor %}
