@@ -2593,17 +2593,22 @@ footer {
     display: none;
 }
 
+.upload-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .upload-card-header .upload-hint {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 15px;
+    padding: 6px 12px;
     background: rgba(255, 170, 0, 0.1);
     border: 1px solid rgba(255, 170, 0, 0.3);
     border-radius: 8px;
     color: var(--warning);
     font-size: 12px;
-    margin-top: 10px;
 }
 
 .upload-meta {
