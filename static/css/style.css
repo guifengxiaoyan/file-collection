@@ -2575,6 +2575,12 @@ footer {
     font-size: 14px;
 }
 
+.upload-user-detail .upload-hint {
+    color: var(--warning);
+    font-size: 13px;
+    margin-top: 8px;
+}
+
 .upload-meta {
     display: flex;
     flex-direction: column;

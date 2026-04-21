@@ -44,16 +44,7 @@
             <div class="upload-user-detail">
                 <h2>{{ obj.name }}</h2>
                 <p><i class="fas fa-folder"></i> {{ theme.title }}</p>
-            </div>
-        </div>
-        <div class="upload-meta">
-            <div class="meta-item">
-                <i class="fas fa-calendar-alt"></i>
-                <span>截止：{{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
-            </div>
-            <div class="meta-item time-warning">
-                <i class="fas fa-hourglass-half"></i>
-                <span>{{ theme.deadline|time_remaining }}</span>
+                <p class="upload-hint"><i class="fas fa-info-circle"></i> 上传附件后点击"完成上传"确认，或关闭页面自动完成</p>
             </div>
         </div>
     </div>
@@ -88,7 +79,6 @@
         <div class="upload-card">
             <div class="upload-card-header">
                 <h3><i class="fas fa-cloud-upload-alt"></i> 上传文件</h3>
-                <p>上传附件后点击"完成上传"确认，或关闭页面自动完成</p>
             </div>
             
             <form method="POST" enctype="multipart/form-data" id="upload-form">
