@@ -2626,10 +2626,11 @@ footer {
 }
 
 .upload-card-header .upload-hint {
-    display: inline;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--text-secondary);
     font-size: 13px;
-    margin-left: 10px;
 }
 
 .upload-card-header .upload-hint i {
@@ -2663,6 +2664,10 @@ footer {
     padding: 20px 25px;
     background: var(--bg-dark);
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .upload-card-header h3 {
@@ -2671,6 +2676,7 @@ footer {
     display: flex;
     align-items: center;
     gap: 10px;
+    margin: 0;
 }
 
 .upload-card-header h3 i {
@@ -2680,7 +2686,6 @@ footer {
 .upload-card-header p {
     font-size: 13px;
     color: var(--text-secondary);
-    margin-left: 28px;
 }
 
 .file-drop-area {
