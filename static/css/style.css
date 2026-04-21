@@ -2960,6 +2960,28 @@ footer {
     margin: 0;
 }
 
+.theme-announcement-card .announcement-deadline-badge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.theme-announcement-card .announcement-deadline-badge span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 71, 87, 0.15);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.theme-announcement-card .announcement-deadline-badge i {
+    color: var(--danger);
+}
+
 .theme-announcement-card .announcement-deadline {
     display: flex;
     align-items: center;
