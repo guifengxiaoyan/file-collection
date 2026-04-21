@@ -3,32 +3,30 @@
 {% block content %}
 <div class="container">
     {% if theme.announcement %}
-    <section class="announcement-section">
-        <div class="section-header-tech">
-            <div class="tech-icon"><i class="fas fa-bullhorn"></i></div>
-            <h2>主题公告</h2>
-            <div class="tech-line"></div>
-        </div>
-        <div class="announcements">
-            <div class="announcement-item announcement-themed">
-                <div class="announcement-icon">
-                    <i class="fas fa-info-circle"></i>
-                </div>
-                <div class="announcement-content">
-                    {% if theme.announcement %}
-                    <p>{{ theme.announcement }}</p>
-                    {% endif %}
-                    {% if theme.attachments %}
-                    <div class="attachment-list">
-                        {% for att in theme.attachments %}
-                        <a href="{{ url_for('download_theme_attachment', attachment_id=att.id) }}" class="btn-download">
-                            <i class="fas fa-download"></i> {{ att.original_name }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
+    <section class="theme-announcement-card">
+        <div class="announcement-glow"></div>
+        <div class="announcement-header">
+            <div class="announcement-icon-wrap">
+                <i class="fas fa-bullhorn"></i>
             </div>
+            <div class="announcement-title-area">
+                <h3>主题公告</h3>
+            </div>
+        </div>
+        <div class="announcement-body">
+            <div class="announcement-content">
+                <p>{{ theme.announcement }}</p>
+            </div>
+            {% if theme.attachments %}
+            <div class="announcement-attachments">
+                <i class="fas fa-paperclip"></i>
+                {% for att in theme.attachments %}
+                <a href="{{ url_for('download_theme_attachment', attachment_id=att.id) }}" class="btn-download">
+                    <i class="fas fa-download"></i> {{ att.original_name }}
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
     </section>
     {% endif %}
