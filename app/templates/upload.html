@@ -45,9 +45,6 @@
                 <h2>{{ obj.name }}</h2>
                 <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> {{ theme.deadline|time_remaining }}</span>
             </div>
-            <div class="upload-hint-row">
-                <span class="upload-hint"><i class="fas fa-info-circle"></i> 上传附件后点击"完成上传"确认，或关闭页面自动完成</span>
-            </div>
         </div>
         {% if obj.is_completed %}
         <div class="upload-card-body">
@@ -85,6 +82,7 @@
                     <button type="submit" class="btn btn-success" id="upload-btn" disabled>
                         <i class="fas fa-upload"></i> 上传文件
                     </button>
+                    <span class="upload-hint"><i class="fas fa-info-circle"></i> 上传附件后点击"完成上传"确认，或关闭页面自动完成</span>
                 </div>
             </form>
         </div>
