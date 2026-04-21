@@ -36,6 +36,7 @@ docker-compose up -d
 # 4. 访问 http://服务器IP:5000
 
 # 更新代码并重建容器
+cd file-collection
 git pull
 docker-compose up -d --build --force-recreate
 
