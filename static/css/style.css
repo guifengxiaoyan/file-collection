@@ -2915,10 +2915,28 @@ footer {
     color: white;
 }
 
+.theme-announcement-card .announcement-title-area {
+    flex: 1;
+}
+
 .theme-announcement-card .announcement-title-area h3 {
     font-family: 'Orbitron', sans-serif;
     font-size: 18px;
     color: var(--warning);
+    margin: 0;
+}
+
+.theme-announcement-card .announcement-deadline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 71, 87, 0.15);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: 8px;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
 }
 
 .theme-announcement-card .announcement-body {
