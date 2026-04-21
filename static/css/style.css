@@ -2795,7 +2795,7 @@ footer {
 }
 
 .upload-btn-wrap {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 20px;
 }
