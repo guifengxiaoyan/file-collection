@@ -2792,6 +2792,11 @@ footer {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.upload-btn-wrap {
+    display: flex;
+    align-items: center;
     gap: 20px;
 }
 
@@ -2801,7 +2806,6 @@ footer {
     gap: 6px;
     color: var(--text-secondary);
     font-size: 13px;
-    margin-left: auto;
 }
 
 .upload-actions .upload-hint i {
