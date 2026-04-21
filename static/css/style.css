@@ -2532,23 +2532,32 @@ footer {
     border-top: 1px solid var(--border-color);
 }
 
-.upload-page-header {
+.upload-main-card {
     background: var(--bg-card);
     border-radius: 16px;
-    padding: 30px;
-    margin-bottom: 25px;
     border: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
+    overflow: hidden;
 }
 
-.upload-user-info {
+.upload-card-header {
+    padding: 20px 25px;
+    background: var(--bg-dark);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.upload-user-row {
     display: flex;
     align-items: center;
-    gap: 25px;
+    gap: 15px;
+    margin-bottom: 12px;
+}
+
+.upload-user-row h2 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
 }
 
 .upload-avatar {
@@ -2562,6 +2571,39 @@ footer {
     font-size: 32px;
     color: white;
     flex-shrink: 0;
+}
+
+.upload-avatar-sm {
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+    border-radius: 12px;
+}
+
+.upload-hint-row {
+    padding-top: 10px;
+}
+
+.upload-hint-row .upload-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.upload-hint-row .upload-hint i {
+    color: var(--warning);
+}
+
+.upload-card-body {
+    padding: 25px;
+}
+
+.upload-user-info {
+    display: flex;
+    align-items: center;
+    gap: 25px;
 }
 
 .upload-avatar-lg {
@@ -2592,16 +2634,16 @@ footer {
     font-size: 14px;
 }
 
-.upload-user-detail .deadline-remaining {
+.upload-user-row .deadline-remaining {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 14px;
+    gap: 6px;
+    padding: 5px 12px;
     background: rgba(255, 71, 87, 0.15);
     border: 1px solid rgba(255, 71, 87, 0.3);
-    border-radius: 8px;
+    border-radius: 6px;
     color: var(--danger);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -2613,10 +2655,6 @@ footer {
 .upload-page-actions-inline {
     display: flex;
     gap: 10px;
-}
-
-.upload-page-header .upload-hint {
-    display: none;
 }
 
 .upload-meta {

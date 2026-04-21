@@ -48,39 +48,41 @@
         </div>
     </div>
 
-    {% if obj.is_completed %}
-    <div class="upload-completed-card">
-        <div class="completed-icon">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="completed-content">
-            <h3>您已完成文件上传</h3>
-            <div class="uploaded-files-mini">
-                <h4><i class="fas fa-file-alt"></i> 已上传附件 ({{ attachments|length }})</h4>
-                <ul>
-                    {% for att in attachments %}
-                    <li>
-                        <i class="fas fa-file"></i> {{ att.original_name }}
-                        <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
+    <div class="upload-main-card">
+        <div class="upload-card-header">
+            <div class="upload-user-row">
+                <div class="upload-avatar upload-avatar-sm">
+                    <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                </div>
+                <h2>{{ obj.name }}</h2>
+                <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> {{ theme.deadline|time_remaining }}</span>
             </div>
-        </div>
-        <div class="completed-actions">
-            <a href="{{ url_for('theme_detail', theme_id=theme.id) }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> 返回主题页
-            </a>
-        </div>
-    </div>
-    {% else %}
-    <div class="upload-section">
-        <div class="upload-card">
-            <div class="upload-card-header">
-                <h3><i class="fas fa-cloud-upload-alt"></i> 上传文件</h3>
+            <div class="upload-hint-row">
                 <span class="upload-hint"><i class="fas fa-info-circle"></i> 上传附件后点击"完成上传"确认，或关闭页面自动完成</span>
             </div>
-            
+        </div>
+        {% if obj.is_completed %}
+        <div class="upload-card-body">
+            <div class="completed-section">
+                <div class="completed-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>您已完成文件上传</h3>
+                <div class="uploaded-files-mini">
+                    <h4><i class="fas fa-file-alt"></i> 已上传附件 ({{ attachments|length }})</h4>
+                    <ul>
+                        {% for att in attachments %}
+                        <li>
+                            <i class="fas fa-file"></i> {{ att.original_name }}
+                            <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="upload-card-body">
             <form method="POST" enctype="multipart/form-data" id="upload-form">
                 <div class="file-drop-area" id="drop-area">
                     <input type="file" name="file" id="file-input" multiple accept=".txt,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.7z,.png,.jpg,.jpeg,.gif" style="display:none;">
@@ -99,6 +101,7 @@
             </form>
         </div>
 
+        {% if attachments %}
         {% if attachments %}
         <div class="uploaded-files-card">
             <div class="uploaded-files-header">
@@ -135,7 +138,6 @@
             </a>
         </div>
     </div>
-    {% endif %}
 </div>
 
 <script>
