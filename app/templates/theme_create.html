@@ -3,7 +3,7 @@
 {% block title %}创建收集主题{% endblock %}
 
 {% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{{ url_for('static', filename='js/xlsx.full.min.js') }}"></script>
 {{ super() }}
 {% endblock %}
 
