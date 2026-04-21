@@ -2619,25 +2619,6 @@ footer {
     display: none;
 }
 
-.upload-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.upload-card-header .upload-hint {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-secondary);
-    font-size: 13px;
-}
-
-.upload-card-header .upload-hint i {
-    color: var(--warning);
-    margin-right: 5px;
-}
-
 .upload-meta {
     display: flex;
     flex-direction: column;
@@ -2664,16 +2645,12 @@ footer {
     padding: 20px 25px;
     background: var(--bg-dark);
     border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
 }
 
 .upload-card-header h3 {
     font-size: 18px;
     color: var(--text-primary);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 10px;
     margin: 0;
@@ -2681,6 +2658,10 @@ footer {
 
 .upload-card-header h3 i {
     color: var(--primary);
+}
+
+.upload-card-header h3 .upload-hint {
+    margin-left: 10px;
 }
 
 .upload-card-header p {
