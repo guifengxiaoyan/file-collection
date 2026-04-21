@@ -2594,6 +2594,7 @@ footer {
     color: var(--danger);
     font-size: 14px;
     font-weight: 600;
+    margin-top: 8px;
 }
 
 .upload-user-detail .deadline-remaining i {

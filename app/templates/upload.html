@@ -43,6 +43,7 @@
             </div>
             <div class="upload-user-detail">
                 <h2>{{ obj.name }}</h2>
+                <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> {{ theme.deadline|time_remaining }}</span>
             </div>
         </div>
     </div>
@@ -132,7 +133,6 @@
             <a href="{{ url_for('theme_detail', theme_id=theme.id) }}" class="btn btn-secondary btn-lg">
                 <i class="fas fa-arrow-left"></i> 返回
             </a>
-            <span class="deadline-remaining-inline"><i class="fas fa-hourglass-half"></i> {{ theme.deadline|time_remaining }}</span>
         </div>
     </div>
     {% endif %}
