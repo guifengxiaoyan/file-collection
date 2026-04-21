@@ -2790,8 +2790,9 @@ footer {
 .upload-actions {
     padding: 15px 25px;
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: 20px;
 }
 
 .upload-actions .upload-hint {
@@ -2800,7 +2801,6 @@ footer {
     gap: 6px;
     color: var(--text-secondary);
     font-size: 13px;
-    flex: 1;
 }
 
 .upload-actions .upload-hint i {
