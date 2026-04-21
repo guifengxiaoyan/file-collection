@@ -2574,6 +2574,8 @@ footer {
 .upload-user-detail {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex: 1;
     gap: 15px;
 }
 
@@ -2582,6 +2584,7 @@ footer {
     font-size: 26px;
     color: var(--text-primary);
     margin: 0;
+    white-space: nowrap;
 }
 
 .upload-user-detail p {
@@ -2600,6 +2603,7 @@ footer {
     color: var(--danger);
     font-size: 14px;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .upload-user-detail .deadline-remaining i {
