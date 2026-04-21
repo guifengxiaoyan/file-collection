@@ -2964,21 +2964,33 @@ footer {
     margin-left: auto;
     display: flex;
     align-items: center;
+    gap: 10px;
 }
 
 .theme-announcement-card .announcement-deadline-badge span {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: rgba(255, 71, 87, 0.15);
-    border: 1px solid rgba(255, 71, 87, 0.3);
-    border-radius: 8px;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .theme-announcement-card .announcement-deadline-badge i {
+    color: var(--danger);
+}
+
+.theme-announcement-card .announcement-deadline-badge .deadline-remaining {
+    background: rgba(255, 71, 87, 0.15);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.theme-announcement-card .announcement-deadline-badge .deadline-remaining i {
     color: var(--danger);
 }
 
