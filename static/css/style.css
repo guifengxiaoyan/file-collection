@@ -2617,15 +2617,15 @@ footer {
 }
 
 .upload-card-header .upload-hint {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: rgba(255, 170, 0, 0.1);
-    border: 1px solid rgba(255, 170, 0, 0.3);
-    border-radius: 8px;
+    display: inline;
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-left: 10px;
+}
+
+.upload-card-header .upload-hint i {
     color: var(--warning);
-    font-size: 12px;
+    margin-right: 5px;
 }
 
 .upload-meta {
@@ -2654,11 +2654,6 @@ footer {
     padding: 20px 25px;
     background: var(--bg-dark);
     border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 15px;
 }
 
 .upload-card-header h3 {
