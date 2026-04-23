@@ -1,6 +1,6 @@
 services:
   app:
-    build:.
+    build: .
     container_name: file-collection
     ports:
       - "5000:5000"
@@ -10,5 +10,5 @@ services:
     environment:
       - SECRET_KEY=your-secret-key-change-in-production
       - FLASK_ENV=production
-      - TZ=Asia/Shanghai
+      - TZ=Asia/Shanghai  # 添加北京时间时区
     restart: unless-stopped
