@@ -809,14 +809,14 @@ main {
 .themes-grid {
     display: flex;
     flex-direction: column;
-    gap: 25px;
+    gap: 15px;
 }
 
 .theme-card {
     background: var(--bg-dark);
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 25px;
+    border-radius: 12px;
+    padding: 15px;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -865,17 +865,17 @@ main {
 
 .theme-card h3 {
     font-family: 'Orbitron', sans-serif;
-    font-size: 22px;
-    margin-bottom: 12px;
+    font-size: 18px;
+    margin-bottom: 8px;
     color: var(--text-primary);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
 .theme-card h3 i {
     color: var(--accent);
-    font-size: 26px;
+    font-size: 20px;
 }
 
 .theme-link {
@@ -911,23 +911,23 @@ main {
 
 .theme-desc {
     color: var(--text-secondary);
-    margin-bottom: 15px;
-    font-size: 15px;
+    margin-bottom: 10px;
+    font-size: 14px;
 }
 
 .theme-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
-    font-size: 15px;
+    gap: 15px;
+    font-size: 13px;
     color: var(--text-secondary);
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 
 .theme-meta span {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .theme-meta i {
@@ -937,16 +937,16 @@ main {
 .time-remaining {
     color: var(--danger) !important;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 13px;
 }
 
 .theme-collector {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-secondary);
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .theme-collector i {
@@ -955,12 +955,12 @@ main {
 
 .theme-stats {
     display: flex;
-    gap: 25px;
-    font-size: 15px;
-    margin-bottom: 20px;
-    padding: 15px;
+    gap: 20px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    padding: 10px;
     background: var(--bg-card);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .completed-count {
@@ -968,26 +968,26 @@ main {
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .total-count {
     color: var(--text-secondary);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .theme-incomplete-names {
-    margin-bottom: 15px;
-    padding: 12px;
+    margin-bottom: 10px;
+    padding: 10px;
     background: rgba(255, 71, 87, 0.08);
     border: 1px solid rgba(255, 71, 87, 0.2);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .incomplete-label {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--danger);
     font-weight: 600;
     margin-bottom: 8px;
@@ -999,14 +999,14 @@ main {
 .incomplete-items {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
 }
 
 .incomplete-tag {
     background: var(--bg-dark);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 13px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
@@ -1843,11 +1843,11 @@ main {
 }
 
 .time-progress-bar {
-    height: 6px;
+    height: 5px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
     overflow: hidden;
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
 .time-progress-fill {
