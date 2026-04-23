@@ -70,10 +70,6 @@
                     {% if theme.collector_name %}
                     <div class="theme-collector"><i class="fas fa-user"></i> 收集人：{{ theme.collector_name }}</div>
                     {% endif %}
-                    <div class="theme-stats">
-                        <span class="completed-count"><i class="fas fa-check-circle"></i> 已完成：{{ theme.collection_objects|selectattr('is_completed')|list|length }}</span>
-                        <span class="total-count"><i class="fas fa-users"></i> 共 {{ theme.collection_objects|length }} 人</span>
-                    </div>
                     {% set incomplete_objs = theme.collection_objects|selectattr('is_completed', 'equalto', False)|list %}
                     {% if incomplete_objs %}
                     <div class="theme-incomplete-names">
@@ -85,6 +81,10 @@
                         </div>
                     </div>
                     {% endif %}
+                    <div class="theme-stats">
+                        <span class="completed-count"><i class="fas fa-check-circle"></i> 已完成：{{ theme.collection_objects|selectattr('is_completed')|list|length }}</span>
+                        <span class="total-count"><i class="fas fa-users"></i> 共 {{ theme.collection_objects|length }} 人</span>
+                    </div>
                 </div>
             </a>
             {% endfor %}
