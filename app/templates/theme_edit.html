@@ -36,7 +36,8 @@
             <div id="file-list-hint" style="margin-top: 10px; color: var(--text-secondary);">
                 <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
             </div>
-            {% if theme.attachments %}
+            <input type="hidden" id="removed-files" name="removed_files" value="">
+        {% if theme.attachments %}
             <div style="margin-top: 15px;">
                 <label><i class="fas fa-file-alt"></i> 当前附件：</label>
                 <div class="attachment-list" style="margin-top: 8px;">

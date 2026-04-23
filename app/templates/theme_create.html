@@ -57,6 +57,7 @@
                 <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
             </div>
         </div>
+        <input type="hidden" id="removed-files" name="removed_files" value="">
         <div class="form-actions">
             <button type="submit" class="btn btn-success">
                 <i class="fas fa-plus"></i> 创建主题
@@ -91,7 +92,7 @@ function updateFileList() {
     }
     
     renderFileList();
-    updateFileInput();
+    updateRemovedFiles();
 }
 
 function renderFileList() {
@@ -120,16 +121,26 @@ function removeFileByName(fileName) {
         }
     }
     renderFileList();
-    updateFileInput();
+    updateRemovedFiles();
 }
 
-function updateFileInput() {
+function updateRemovedFiles() {
     var input = document.getElementById('attachment-input');
-    var dataTransfer = new DataTransfer();
-    for (var i = 0; i < selectedFiles.length; i++) {
-        dataTransfer.items.add(selectedFiles[i]);
+    var removedNames = [];
+    for (var i = 0; i < input.files.length; i++) {
+        var file = input.files[i];
+        var found = false;
+        for (var j = 0; j < selectedFiles.length; j++) {
+            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            removedNames.push(file.name);
+        }
     }
-    input.files = dataTransfer.files;
+    document.getElementById('removed-files').value = JSON.stringify(removedNames);
 }
 
 function updateObjectsCount() {
