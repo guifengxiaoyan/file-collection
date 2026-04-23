@@ -60,7 +60,17 @@ function updateFileList() {
     var hintDiv = document.getElementById('file-list-hint');
     
     for (var i = 0; i < input.files.length; i++) {
-        selectedFiles.push(input.files[i]);
+        var file = input.files[i];
+        var exists = false;
+        for (var j = 0; j < selectedFiles.length; j++) {
+            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            selectedFiles.push(file);
+        }
     }
     
     if (selectedFiles.length > 0) {
