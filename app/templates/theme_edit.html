@@ -43,6 +43,9 @@
                     {% for att in theme.attachments %}
                     <span class="existing-attachment">
                         <i class="fas fa-file"></i> {{ att.original_name }}
+                        <a href="{{ url_for('delete_theme_attachment', attachment_id=att.id) }}" class="btn btn-danger btn-small" style="margin-left: 8px; padding: 2px 8px; font-size: 11px;" onclick="return confirm('确定删除此附件?')">
+                            <i class="fas fa-trash"></i>
+                        </a>
                     </span>
                     {% endfor %}
                 </div>

@@ -141,6 +141,19 @@ def register_routes(app):
         db.session.commit()
         return jsonify({'success': True})
 
+    @app.route('/admin/theme/attachment/<int:attachment_id>/delete', methods=['GET', 'POST'])
+    @login_required
+    def delete_theme_attachment(attachment_id):
+        attachment = ThemeAttachment.query.get_or_404(attachment_id)
+        theme_id = attachment.theme_id
+        file_path = os.path.join(get_theme_folder(theme_id), attachment.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        db.session.delete(attachment)
+        db.session.commit()
+        flash('附件已删除', 'success')
+        return redirect(url_for('edit_theme', theme_id=theme_id))
+
     @app.route('/admin/login', methods=['GET', 'POST'])
     def admin_login():
         if request.method == 'POST':
