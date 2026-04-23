@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    build:
     container_name: file-collection
     ports:
       - "5000:5000"
