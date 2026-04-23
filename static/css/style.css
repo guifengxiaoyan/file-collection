@@ -3244,7 +3244,7 @@ footer {
     border: 1px solid rgba(255, 71, 87, 0.3);
     border-radius: 8px;
     color: var(--danger);
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 600;
     margin-left: auto;
 }
@@ -3252,6 +3252,7 @@ footer {
 .section-header-tech .section-deadline span:first-child {
     color: var(--text-secondary);
     font-weight: 400;
+    font-size: 14px;
 }
 
 .theme-announcement-card .announcement-body {
