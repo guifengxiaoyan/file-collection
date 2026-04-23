@@ -17,6 +17,8 @@ def register_routes(app):
     @app.template_filter('time_remaining')
     def time_remaining(deadline):
         now = beijing_now()
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=now.tzinfo)
         if deadline < now:
             return '已截止'
         delta = deadline - now
@@ -33,6 +35,10 @@ def register_routes(app):
     @app.template_filter('time_progress')
     def time_progress(deadline, created_at):
         now = beijing_now()
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=now.tzinfo)
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=now.tzinfo)
         if deadline < now:
             return 0
         total = (deadline - created_at).total_seconds()
