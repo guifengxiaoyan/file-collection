@@ -3199,7 +3199,7 @@ footer {
     border: 1px solid var(--border-color);
     border-radius: 6px;
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: 18px;
 }
 
 .theme-announcement-card .announcement-deadline-badge i {
