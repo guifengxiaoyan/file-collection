@@ -3252,7 +3252,7 @@ footer {
 .section-header-tech .section-deadline span:first-child {
     color: var(--text-secondary);
     font-weight: 400;
-    font-size: 14px;
+    font-size: 18px;
 }
 
 .theme-announcement-card .announcement-body {
