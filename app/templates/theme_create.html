@@ -164,6 +164,10 @@ function handleObjectsExcel() {
         var reader = new FileReader();
         reader.onload = function(e) {
             try {
+                if (typeof XLSX === 'undefined') {
+                    alert('Excel解析库未加载，请刷新页面后重试');
+                    return;
+                }
                 var data = new Uint8Array(e.target.result);
                 var workbook = XLSX.read(data, {type: 'array'});
                 var sheetName = workbook.SheetNames[0];
