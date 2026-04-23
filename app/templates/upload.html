@@ -43,7 +43,7 @@
                     <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
                 </div>
                 <h2>{{ obj.name }}</h2>
-                <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> {{ theme.deadline|time_remaining }}</span>
+                <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> 剩余时间：{{ theme.deadline|time_remaining }}</span>
             </div>
         </div>
         {% if obj.is_completed %}
