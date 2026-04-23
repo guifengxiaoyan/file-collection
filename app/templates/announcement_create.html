@@ -20,7 +20,8 @@
             <label for="attachment-input" class="btn btn-secondary" style="cursor:pointer;">
                 <i class="fas fa-upload"></i> 选择文件
             </label>
-            <div id="file-list" style="margin-top: 10px; color: var(--text-secondary);">
+            <div id="selected-files-list" style="margin-top: 10px;"></div>
+            <div id="file-list-hint" style="margin-top: 10px; color: var(--text-secondary);">
                 <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
             </div>
         </div>
@@ -36,19 +37,44 @@
 </div>
 
 <script>
+var selectedFiles = [];
+
 function updateFileList() {
     var input = document.getElementById('attachment-input');
-    var fileList = document.getElementById('file-list');
-    var files = input.files;
-    if (files.length > 0) {
-        var html = '<i class="fas fa-files"></i> 已选择 ' + files.length + ' 个文件：<br>';
-        for (var i = 0; i < files.length; i++) {
-            html += '<span style="display:inline-block; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + files[i].name + '</span>';
-        }
-        fileList.innerHTML = html;
-    } else {
-        fileList.innerHTML = '<i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式';
+    var fileListDiv = document.getElementById('selected-files-list');
+    var hintDiv = document.getElementById('file-list-hint');
+    
+    for (var i = 0; i < input.files.length; i++) {
+        selectedFiles.push(input.files[i]);
     }
+    
+    if (selectedFiles.length > 0) {
+        var html = '<i class="fas fa-files"></i> 已选择 ' + selectedFiles.length + ' 个文件：<br>';
+        for (var i = 0; i < selectedFiles.length; i++) {
+            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <button type="button" onclick="removeFile(' + i + ')" style="background:none; border:none; color:var(--danger); cursor:pointer; margin-left:6px; padding:0;"><i class="fas fa-times"></i></button></span>';
+        }
+        fileListDiv.innerHTML = html;
+        hintDiv.style.display = 'none';
+    } else {
+        fileListDiv.innerHTML = '';
+        hintDiv.style.display = 'block';
+    }
+    
+    updateFileInput();
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    updateFileList();
+}
+
+function updateFileInput() {
+    var input = document.getElementById('attachment-input');
+    var dataTransfer = new DataTransfer();
+    for (var i = 0; i < selectedFiles.length; i++) {
+        dataTransfer.items.add(selectedFiles[i]);
+    }
+    input.files = dataTransfer.files;
 }
 </script>
 {% endblock %}
