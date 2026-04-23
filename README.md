@@ -38,7 +38,7 @@ docker-compose up -d
 # 更新代码并重建容器
 cd file-collection
 git pull
-docker-compose up -d --build --force-recreate
+docker compose up -d --build --force-recreate
 
 ### 本地开发
 
