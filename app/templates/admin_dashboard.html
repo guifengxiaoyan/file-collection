@@ -37,7 +37,7 @@
                     <i class="fas fa-folder" style="color: var(--primary);"></i>
                 </div>
                 <div class="overview-content">
-                    <span class="overview-value">{{ themes|length }}</span>
+                    <span class="overview-value">{{ active_themes|length + archived_themes|length }}</span>
                     <span class="overview-label">全部主题</span>
                 </div>
             </div>
@@ -46,7 +46,7 @@
                     <i class="fas fa-play" style="color: var(--success);"></i>
                 </div>
                 <div class="overview-content">
-                    <span class="overview-value">{{ themes|selectattr('is_active')|list|length }}</span>
+                    <span class="overview-value">{{ active_themes|length }}</span>
                     <span class="overview-label">进行中</span>
                 </div>
             </div>
@@ -55,7 +55,7 @@
                     <i class="fas fa-archive" style="color: var(--danger);"></i>
                 </div>
                 <div class="overview-content">
-                    <span class="overview-value">{{ themes|rejectattr('is_active')|list|length }}</span>
+                    <span class="overview-value">{{ archived_themes|length }}</span>
                     <span class="overview-label">已归档</span>
                 </div>
             </div>
