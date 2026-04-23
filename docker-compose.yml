@@ -10,4 +10,5 @@ services:
     environment:
       - SECRET_KEY=your-secret-key-change-in-production
       - FLASK_ENV=production
+      - TZ=Asia/Shanghai 
     restart: unless-stopped
