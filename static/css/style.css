@@ -919,7 +919,7 @@ main {
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--text-secondary);
     margin-bottom: 15px;
 }
@@ -937,6 +937,7 @@ main {
 .time-remaining {
     color: var(--danger) !important;
     font-weight: 600;
+    font-size: 15px;
 }
 
 .theme-collector {
