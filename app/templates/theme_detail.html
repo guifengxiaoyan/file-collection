@@ -2,7 +2,6 @@
 
 {% block content %}
 <div class="container">
-    {% if theme.announcement %}
     <section class="theme-announcement-card">
         <div class="announcement-glow"></div>
         <div class="announcement-header">
@@ -16,10 +15,13 @@
                 <span><i class="fas fa-calendar"></i> 截止时间 {{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
             </div>
         </div>
+        {% if theme.announcement or theme.attachments %}
         <div class="announcement-body">
+            {% if theme.announcement %}
             <div class="announcement-content">
                 <p>{{ theme.announcement }}</p>
             </div>
+            {% endif %}
             {% if theme.attachments %}
             <div class="announcement-attachments">
                 <i class="fas fa-paperclip"></i>
@@ -31,8 +33,8 @@
             </div>
             {% endif %}
         </div>
+        {% endif %}
     </section>
-    {% endif %}
 
     <section class="objects-section">
         <div class="section-header-tech">

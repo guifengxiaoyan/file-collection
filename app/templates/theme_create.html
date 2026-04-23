@@ -3,14 +3,13 @@
 {% block title %}创建收集主题{% endblock %}
 
 {% block head %}
-<script src="{{ url_for('static', filename='js/xlsx.full.min.js') }}"></script>
 {{ super() }}
 {% endblock %}
 
 {% block content %}
 <div class="container form-container">
     <h2><i class="fas fa-plus-circle"></i> 创建收集主题</h2>
-    <form method="POST" enctype="multipart/form-data" class="theme-form">
+    <form method="POST" enctype="multipart/form-data" class="theme-form" id="theme-form">
         <div class="form-group">
             <label><i class="fas fa-folder"></i> 主题名称 *</label>
             <input type="text" name="title" required placeholder="输入主题名称">
@@ -71,39 +70,80 @@
 
 <script>
 var selectedFiles = [];
+var xlsxLoaded = false;
 
 function updateFileList() {
     var input = document.getElementById('attachment-input');
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
     
+    if (!input || !fileListDiv) {
+        console.error('Required elements not found');
+        return;
+    }
+    
+    // Get newly selected files (files in input.files that are not in selectedFiles)
+    var newFiles = [];
     for (var i = 0; i < input.files.length; i++) {
         var file = input.files[i];
-        var exists = false;
+        var isNew = true;
         for (var j = 0; j < selectedFiles.length; j++) {
             if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) {
-                exists = true;
+                isNew = false;
                 break;
             }
         }
-        if (!exists) {
-            selectedFiles.push(file);
+        if (isNew) {
+            newFiles.push(file);
         }
     }
     
+    // Add new files to selectedFiles
+    for (var i = 0; i < newFiles.length; i++) {
+        selectedFiles.push(newFiles[i]);
+    }
+    
+    console.log('Total selected files:', selectedFiles.length);
     renderFileList();
-    updateRemovedFiles();
+    
+    // Update input.files to match selectedFiles
+    updateFileInput();
+}
+
+function updateFileInput() {
+    var input = document.getElementById('attachment-input');
+    if (!input) return;
+    
+    // Clear and rebuild the file input
+    input.value = '';
+    
+    // Create new DataTransfer
+    var dataTransfer = new DataTransfer();
+    
+    // Add files one by one
+    for (var i = 0; i < selectedFiles.length; i++) {
+        dataTransfer.items.add(selectedFiles[i]);
+    }
+    
+    // Set the files
+    input.files = dataTransfer.files;
+    
+    console.log('Input files count:', input.files.length);
 }
 
 function renderFileList() {
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
     
+    if (!fileListDiv) {
+        console.error('selected-files-list not found');
+        return;
+    }
+    
     if (selectedFiles.length > 0) {
         var html = '<i class="fas fa-files"></i> 已选择 ' + selectedFiles.length + ' 个文件：<br>';
         for (var i = 0; i < selectedFiles.length; i++) {
-            var fileName = selectedFiles[i].name.replace(/'/g, "\\'").replace(/"/g, '\\"');
-            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFileByName(\'' + fileName + '\')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
+            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFile(' + i + ')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
         }
         fileListDiv.innerHTML = html;
         hintDiv.style.display = 'none';
@@ -113,34 +153,10 @@ function renderFileList() {
     }
 }
 
-function removeFileByName(fileName) {
-    for (var i = 0; i < selectedFiles.length; i++) {
-        if (selectedFiles[i].name === fileName) {
-            selectedFiles.splice(i, 1);
-            break;
-        }
-    }
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    updateFileInput();
     renderFileList();
-    updateRemovedFiles();
-}
-
-function updateRemovedFiles() {
-    var input = document.getElementById('attachment-input');
-    var removedNames = [];
-    for (var i = 0; i < input.files.length; i++) {
-        var file = input.files[i];
-        var found = false;
-        for (var j = 0; j < selectedFiles.length; j++) {
-            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            removedNames.push(file.name);
-        }
-    }
-    document.getElementById('removed-files').value = JSON.stringify(removedNames);
 }
 
 function updateObjectsCount() {
@@ -161,56 +177,69 @@ function handleObjectsExcel() {
         var file = input.files[0];
         nameSpan.textContent = '已选择: ' + file.name;
         
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                if (typeof XLSX === 'undefined') {
-                    alert('Excel解析库未加载，请刷新页面后重试');
-                    return;
-                }
-                var data = new Uint8Array(e.target.result);
-                var workbook = XLSX.read(data, {type: 'array'});
-                var sheetName = workbook.SheetNames[0];
-                var sheet = workbook.Sheets[sheetName];
-                
-                if (!sheet || !sheet['!ref']) {
-                    alert('Excel文件内容为空');
-                    return;
-                }
-                
-                var range = XLSX.utils.decode_range(sheet['!ref']);
-                
-                var names = [];
-                for (var row = range.s.r; row <= range.e.r; row++) {
-                    var cellAddress = XLSX.utils.encode_cell({r: row, c: 0});
-                    var cell = sheet[cellAddress];
-                    if (cell && cell.v !== undefined && cell.v !== null) {
-                        var name = String(cell.v).trim();
-                        if (name) names.push(name);
+        ensureXlsxLoaded(function() {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var workbook = XLSX.read(data, {type: 'array'});
+                    var sheetName = workbook.SheetNames[0];
+                    var sheet = workbook.Sheets[sheetName];
+                    
+                    if (!sheet || !sheet['!ref']) {
+                        alert('Excel文件内容为空');
+                        return;
                     }
+                    
+                    var range = XLSX.utils.decode_range(sheet['!ref']);
+                    
+                    var names = [];
+                    for (var row = range.s.r; row <= range.e.r; row++) {
+                        var cellAddress = XLSX.utils.encode_cell({r: row, c: 0});
+                        var cell = sheet[cellAddress];
+                        if (cell && cell.v !== undefined && cell.v !== null) {
+                            var name = String(cell.v).trim();
+                            if (name) names.push(name);
+                        }
+                    }
+                    
+                    if (names.length === 0) {
+                        alert('未在Excel中找到有效数据');
+                        return;
+                    }
+                    
+                    if (textarea.value.trim() === '') {
+                        textarea.value = names.join('\n');
+                    } else {
+                        textarea.value = textarea.value.trim() + '\n' + names.join('\n');
+                    }
+                    updateObjectsCount();
+                } catch (error) {
+                    console.error('Excel解析错误:', error);
+                    alert('Excel文件解析失败，请确保文件格式正确');
                 }
-                
-                if (names.length === 0) {
-                    alert('未在Excel中找到有效数据');
-                    return;
-                }
-                
-                if (textarea.value.trim() === '') {
-                    textarea.value = names.join('\n');
-                } else {
-                    textarea.value = textarea.value.trim() + '\n' + names.join('\n');
-                }
-                updateObjectsCount();
-            } catch (error) {
-                console.error('Excel解析错误:', error);
-                alert('Excel文件解析失败，请确保文件格式正确');
-            }
-        };
-        reader.onerror = function() {
-            alert('文件读取失败');
-        };
-        reader.readAsArrayBuffer(file);
+            };
+            reader.onerror = function() {
+                alert('文件读取失败');
+            };
+            reader.readAsArrayBuffer(file);
+        });
     }
+}
+
+function ensureXlsxLoaded(callback) {
+    if (typeof XLSX !== 'undefined') {
+        callback();
+        return;
+    }
+    var script = document.createElement('script');
+    script.src = "{{ url_for('static', filename='js/xlsx.full.min.js') }}";
+    script.onload = function() { callback(); };
+    script.onerror = function() { 
+        console.warn('Excel导入功能不可用'); 
+        alert('Excel导入功能加载失败，请刷新页面后重试');
+    };
+    document.head.appendChild(script);
 }
 
 window.addEventListener('load', updateObjectsCount);

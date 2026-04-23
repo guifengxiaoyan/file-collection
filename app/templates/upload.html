@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ obj.name }} - 文件上传{% endblock %}
+{% block title %}{{ collection_object.name }} - 文件上传{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -40,13 +40,28 @@
         <div class="upload-card-header">
             <div class="upload-user-row">
                 <div class="upload-avatar upload-avatar-sm">
-                    <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
+                    <i class="fas {% if collection_object.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
                 </div>
-                <h2>{{ obj.name }}</h2>
+                <h2>{{ collection_object.name }}</h2>
+                {% if expired %}
+                <span class="deadline-remaining" style="color: var(--danger);"><i class="fas fa-clock"></i> 已截止</span>
+                {% else %}
                 <span class="deadline-remaining"><i class="fas fa-hourglass-half"></i> 剩余时间：{{ theme.deadline|time_remaining }}</span>
+                {% endif %}
             </div>
         </div>
-        {% if obj.is_completed %}
+        
+        {% if expired %}
+        <div class="upload-card-body">
+            <div class="completed-section">
+                <div class="completed-icon" style="color: var(--danger);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3>该主题已超过截止时间</h3>
+                <p style="color: var(--text-secondary);">无法再上传或修改附件</p>
+            </div>
+        </div>
+        {% elif collection_object.is_completed %}
         <div class="upload-card-body">
             <div class="completed-section">
                 <div class="completed-icon">
@@ -105,7 +120,7 @@
                     </div>
                     <div class="file-actions">
                         <span class="upload-time"><i class="far fa-clock"></i> {{ att.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                        {% if not obj.is_completed %}
+                        {% if not collection_object.is_completed %}
                         <button type="button" class="btn btn-danger btn-small" onclick="deleteAttachment({{ att.id }})">
                             <i class="fas fa-trash"></i> 删除
                         </button>
@@ -213,7 +228,7 @@ window.addEventListener('beforeunload', function(e) {
     var currentAttachments = document.querySelectorAll('#attachment-list li').length;
     var totalAttachments = attachmentCount + currentAttachments;
     if (totalAttachments > 0) {
-        fetch('{{ url_for("upload_page", object_id=obj.id) }}', {
+        fetch('{{ url_for("upload_page", object_id=collection_object.id) }}', {
             method: 'POST',
             body: new URLSearchParams({ 'finish': '1' }),
             headers: {

@@ -57,6 +57,17 @@ def register_routes(app):
     @app.route('/')
     def index():
         announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+        now = beijing_now()
+        # 自动归档已过期的主题
+        expired_themes = CollectionTheme.query.filter(
+            CollectionTheme.is_active == True,
+            CollectionTheme.deadline < now
+        ).all()
+        for theme in expired_themes:
+            theme.is_active = False
+        if expired_themes:
+            db.session.commit()
+        
         themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.deadline.asc()).all()
         return render_template('index.html', announcements=announcements, themes=themes)
 
@@ -73,6 +84,20 @@ def register_routes(app):
     def upload_page(object_id):
         collection_object = CollectionObject.query.get_or_404(object_id)
         theme = collection_object.theme
+        now = beijing_now()
+        
+        # 检查主题是否已过期（处理时区问题）
+        deadline = theme.deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=now.tzinfo)
+        is_expired = deadline < now
+        
+        if is_expired:
+            if request.method == 'POST':
+                flash('该主题已超过截止时间，无法上传附件', 'error')
+                return redirect(url_for('index'))
+            # GET 请求时显示过期提示
+            return render_template('upload.html', theme=theme, collection_object=collection_object, expired=True)
         
         if request.method == 'POST':
             if 'finish' in request.form:
@@ -108,7 +133,7 @@ def register_routes(app):
                 return redirect(url_for('upload_page', object_id=object_id))
         
         attachments = Attachment.query.filter_by(collection_object_id=object_id).all()
-        return render_template('upload.html', obj=collection_object, theme=theme, attachments=attachments)
+        return render_template('upload.html', collection_object=collection_object, theme=theme, attachments=attachments)
 
     @app.route('/download/attachment/<int:attachment_id>')
     @login_required
@@ -175,6 +200,17 @@ def register_routes(app):
     @app.route('/admin')
     @login_required
     def admin_dashboard():
+        now = beijing_now()
+        # 自动归档已过期的主题
+        expired_themes = CollectionTheme.query.filter(
+            CollectionTheme.is_active == True,
+            CollectionTheme.deadline < now
+        ).all()
+        for theme in expired_themes:
+            theme.is_active = False
+        if expired_themes:
+            db.session.commit()
+        
         active_themes = CollectionTheme.query.filter_by(is_active=True).order_by(CollectionTheme.deadline.asc()).all()
         archived_themes = CollectionTheme.query.filter_by(is_active=False).order_by(CollectionTheme.created_at.desc()).all()
         announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
