@@ -431,9 +431,19 @@ def register_routes(app):
             db.session.commit()
             
             if 'attachments' in request.files:
+                import json
+                removed_files = []
+                if request.form.get('removed_files'):
+                    try:
+                        removed_files = json.loads(request.form.get('removed_files'))
+                    except:
+                        removed_files = []
+                
                 files = request.files.getlist('attachments')
                 for file in files:
                     if file and file.filename and allowed_file(file.filename, Config.ALLOWED_EXTENSIONS):
+                        if file.filename in removed_files:
+                            continue
                         original_name = file.filename
                         filename = secure_filename(original_name)
                         folder = get_announcement_folder()
@@ -480,9 +490,19 @@ def register_routes(app):
             db.session.commit()
             
             if 'attachments' in request.files:
+                import json
+                removed_files = []
+                if request.form.get('removed_files'):
+                    try:
+                        removed_files = json.loads(request.form.get('removed_files'))
+                    except:
+                        removed_files = []
+                
                 files = request.files.getlist('attachments')
                 for file in files:
                     if file and file.filename and allowed_file(file.filename, Config.ALLOWED_EXTENSIONS):
+                        if file.filename in removed_files:
+                            continue
                         original_name = file.filename
                         filename = secure_filename(original_name)
                         folder = get_announcement_folder()
