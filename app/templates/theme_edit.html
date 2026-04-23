@@ -85,10 +85,19 @@ function updateFileList() {
         }
     }
     
+    renderFileList();
+    updateFileInput();
+}
+
+function renderFileList() {
+    var fileListDiv = document.getElementById('selected-files-list');
+    var hintDiv = document.getElementById('file-list-hint');
+    
     if (selectedFiles.length > 0) {
         var html = '<i class="fas fa-files"></i> 已选择 ' + selectedFiles.length + ' 个文件：<br>';
         for (var i = 0; i < selectedFiles.length; i++) {
-            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <a href="javascript:removeFile(' + i + ')" style="color:var(--danger); cursor:pointer; margin-left:6px; text-decoration:none;"><i class="fas fa-times"></i></a></span>';
+            var fileName = selectedFiles[i].name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFileByName(\'' + fileName + '\')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
         }
         fileListDiv.innerHTML = html;
         hintDiv.style.display = 'none';
@@ -96,13 +105,17 @@ function updateFileList() {
         fileListDiv.innerHTML = '';
         hintDiv.style.display = 'block';
     }
-    
-    updateFileInput();
 }
 
-function removeFile(index) {
-    selectedFiles.splice(index, 1);
-    updateFileList();
+function removeFileByName(fileName) {
+    for (var i = 0; i < selectedFiles.length; i++) {
+        if (selectedFiles[i].name === fileName) {
+            selectedFiles.splice(i, 1);
+            break;
+        }
+    }
+    renderFileList();
+    updateFileInput();
 }
 
 function updateFileInput() {
