@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
-from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment
+from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, beijing_now
 from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
@@ -16,7 +16,7 @@ def register_routes(app):
     
     @app.template_filter('time_remaining')
     def time_remaining(deadline):
-        now = datetime.utcnow()
+        now = beijing_now()
         if deadline < now:
             return '已截止'
         delta = deadline - now
@@ -32,7 +32,7 @@ def register_routes(app):
 
     @app.template_filter('time_progress')
     def time_progress(deadline, created_at):
-        now = datetime.utcnow()
+        now = beijing_now()
         if deadline < now:
             return 0
         total = (deadline - created_at).total_seconds()
@@ -46,7 +46,7 @@ def register_routes(app):
 
     @app.context_processor
     def inject_now():
-        return {'now': datetime.utcnow()}
+        return {'now': beijing_now()}
 
     @app.route('/')
     def index():
@@ -77,7 +77,7 @@ def register_routes(app):
                     flash('请先上传附件后再完成', 'error')
                     return redirect(url_for('upload_page', object_id=object_id))
                 collection_object.is_completed = True
-                collection_object.completed_at = datetime.utcnow()
+                collection_object.completed_at = beijing_now()
                 db.session.commit()
                 return redirect(url_for('index'))
             

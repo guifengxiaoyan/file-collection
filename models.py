@@ -1,9 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 db = SQLAlchemy()
 login_manager = LoginManager()
+
+def beijing_now():
+    return datetime.now(timezone(timedelta(hours=8)))
 
 class Admin(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -26,8 +29,8 @@ class Announcement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=beijing_now)
+    updated_at = db.Column(db.DateTime, default=beijing_now, onupdate=beijing_now)
     attachments = db.relationship('AnnouncementAttachment', backref='announcement', lazy=True, cascade='all, delete-orphan')
 
 class AnnouncementAttachment(db.Model):
@@ -35,7 +38,7 @@ class AnnouncementAttachment(db.Model):
     filename = db.Column(db.String(500), nullable=False)
     original_name = db.Column(db.String(200), nullable=False)
     announcement_id = db.Column(db.Integer, db.ForeignKey('announcement.id'), nullable=False)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_at = db.Column(db.DateTime, default=beijing_now)
 
 class CollectionTheme(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -43,7 +46,7 @@ class CollectionTheme(db.Model):
     description = db.Column(db.Text)
     announcement = db.Column(db.Text)
     deadline = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=beijing_now)
     is_active = db.Column(db.Boolean, default=True)
     collector_name = db.Column(db.String(100))
     collection_objects = db.relationship('CollectionObject', backref='theme', lazy=True, cascade='all, delete-orphan')
@@ -54,7 +57,7 @@ class ThemeAttachment(db.Model):
     filename = db.Column(db.String(500), nullable=False)
     original_name = db.Column(db.String(200), nullable=False)
     theme_id = db.Column(db.Integer, db.ForeignKey('collection_theme.id'), nullable=False)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_at = db.Column(db.DateTime, default=beijing_now)
 
 class CollectionObject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -69,4 +72,4 @@ class Attachment(db.Model):
     filename = db.Column(db.String(500), nullable=False)
     original_name = db.Column(db.String(200), nullable=False)
     collection_object_id = db.Column(db.Integer, db.ForeignKey('collection_object.id'), nullable=False)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_at = db.Column(db.DateTime, default=beijing_now)
