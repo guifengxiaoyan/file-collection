@@ -12,12 +12,28 @@
 
     <!-- Hero -->
     <section class="hero">
-        <h1 class="hero__title">统一收集，<span>高效管理</span>每一份资料</h1>
-        <p class="hero__sub">面向团队的文件收集平台：创建收集主题、分发至成员、实时追踪上传进度，所有附件安全归档。</p>
-        <div class="hero__stats">
-            <div class="hero__stat"><b>{{ themes|length }}</b><span>进行中主题</span></div>
-            <div class="hero__stat"><b>{{ total_objects }}</b><span>收集对象</span></div>
-            <div class="hero__stat"><b>{{ done_objects }}</b><span>已完成提交</span></div>
+        <div class="hero__body">
+            <h1 class="hero__title">统一收集，<span>高效管理</span>每一份资料</h1>
+            <p class="hero__sub">面向团队的文件收集平台：创建收集主题、分发至成员、实时追踪上传进度，所有附件安全归档。</p>
+            <div class="hero__stats">
+                <div class="hero__stat"><b>{{ themes|length }}</b><span>进行中主题</span></div>
+                <div class="hero__stat"><b>{{ total_objects }}</b><span>收集对象</span></div>
+                <div class="hero__stat"><b>{{ done_objects }}</b><span>已完成提交</span></div>
+            </div>
+            <div class="hero__cta">
+                <a href="#themes-section" class="btn btn--primary"><i class="fas fa-folder-open"></i> 查看收集主题</a>
+                <a href="{{ url_for('admin_login') }}" class="btn btn--ghost"><i class="fas fa-user-shield"></i> 管理员入口</a>
+            </div>
+        </div>
+        <div class="hero__art" aria-hidden="true">
+            <div class="art__orb"></div>
+            <div class="art__zone"><i class="fas fa-cloud-upload-alt"></i></div>
+            <div class="art__file art__file--1"><i class="fas fa-file-pdf"></i> 2026Q1报告.pdf</div>
+            <div class="art__file art__file--2"><i class="fas fa-file-image"></i> 团队合影.png</div>
+            <div class="art__file art__file--3"><i class="fas fa-file-excel"></i> 预算表.xlsx</div>
+            <span class="art__dot art__dot--1"></span>
+            <span class="art__dot art__dot--2"></span>
+            <span class="art__dot art__dot--3"></span>
         </div>
     </section>
 
@@ -58,7 +74,7 @@
     {% endif %}
 
     <!-- 收集主题 -->
-    <section class="section">
+    <section class="section" id="themes-section">
         <div class="section__head">
             <div>
                 <h2 class="section__title"><i class="fas fa-folder-open"></i> 收集主题</h2>

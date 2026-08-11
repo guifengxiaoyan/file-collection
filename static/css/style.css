@@ -299,23 +299,93 @@ input:focus, textarea:focus, select:focus {
 /* ---------- 首页 Hero ---------- */
 .hero {
   position: relative;
-  padding: 42px 36px;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 40px;
+  align-items: center;
+  min-height: 340px;
+  padding: 46px 52px;
   border-radius: var(--r-lg);
   background:
-    radial-gradient(600px 300px at 85% -20%, rgba(109,139,255,.18), transparent 60%),
+    radial-gradient(600px 320px at 90% 10%, rgba(109,139,255,.20), transparent 60%),
+    radial-gradient(500px 280px at 10% 100%, rgba(47,211,196,.12), transparent 60%),
     linear-gradient(135deg, var(--surface), var(--surface-2));
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   overflow: hidden;
   margin-bottom: 40px;
 }
-.hero__title { font-size: 32px; line-height: 1.2; margin-bottom: 12px; }
+.hero__body { min-width: 0; }
+.hero__title { font-size: 36px; line-height: 1.18; margin-bottom: 14px; letter-spacing: -.02em; }
 .hero__title span { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hero__sub { color: var(--muted); font-size: 15px; max-width: 620px; }
-.hero__stats { display: flex; gap: 28px; margin-top: 26px; flex-wrap: wrap; }
-.hero__stat { display: flex; flex-direction: column; }
-.hero__stat b { font-size: 24px; }
-.hero__stat span { font-size: 12.5px; color: var(--faint); }
+.hero__sub { color: var(--muted); font-size: 15px; max-width: 560px; line-height: 1.7; }
+.hero__stats { display: flex; gap: 32px; margin-top: 28px; flex-wrap: wrap; }
+.hero__stat { display: flex; flex-direction: column; gap: 2px; }
+.hero__stat b { font-size: 28px; font-weight: 700; line-height: 1; background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero__stat span { font-size: 13px; color: var(--faint); }
+.hero__cta { display: inline-flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+
+/* Hero 插画（纯 CSS） */
+.hero__art {
+  position: relative;
+  height: 340px;
+  border-radius: var(--r);
+}
+.art__orb {
+  position: absolute; inset: 8%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(109,139,255,.45), rgba(47,211,196,.22) 45%, transparent 70%);
+  filter: blur(24px);
+  animation: pulse-orb 6s ease-in-out infinite;
+}
+@keyframes pulse-orb {
+  0%,100% { transform: scale(1); opacity: .9; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+.art__zone {
+  position: absolute; left: 50%; top: 52%;
+  transform: translate(-50%, -50%);
+  width: 230px; height: 150px;
+  border: 2px dashed rgba(109,139,255,.55);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(109,139,255,.14), rgba(47,211,196,.08));
+  display: grid; place-items: center;
+  color: var(--accent);
+  font-size: 48px;
+  box-shadow: 0 24px 60px -20px rgba(109,139,255,.55), inset 0 0 30px rgba(109,139,255,.08);
+}
+.art__file {
+  position: absolute;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  font-size: 13px; font-weight: 600;
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,.7);
+  animation: float 5s ease-in-out infinite;
+  white-space: nowrap;
+}
+.art__file i { font-size: 14px; }
+.art__file--1 { top: 12%; left: 2%; transform: rotate(-6deg); animation-delay: 0s; }
+.art__file--1 i { color: #ff6b9a; }
+.art__file--2 { top: 4%; right: 4%; transform: rotate(5deg); animation-delay: 1.2s; }
+.art__file--2 i { color: var(--accent-2); }
+.art__file--3 { bottom: 8%; right: 6%; transform: rotate(-3deg); animation-delay: 2.4s; }
+.art__file--3 i { color: var(--warning); }
+@keyframes float {
+  0%,100% { margin-top: 0; }
+  50%     { margin-top: -12px; }
+}
+/* Hero 装饰小点 */
+.art__dot {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); opacity: .6;
+  animation: float 4s ease-in-out infinite;
+}
+.art__dot--1 { top: 30%; left: 38%; animation-delay: .3s; background: var(--accent-2); }
+.art__dot--2 { bottom: 22%; left: 8%; animation-delay: 1.8s; }
+.art__dot--3 { top: 8%; left: 46%; animation-delay: 2.6s; width: 4px; height: 4px; background: var(--warning); }
 
 /* ---------- 公告 ---------- */
 .announce-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px,1fr)); gap: 18px; }
@@ -339,7 +409,7 @@ input:focus, textarea:focus, select:focus {
 .announce__attach a:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ---------- 主题卡片网格 ---------- */
-.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 18px; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); gap: 18px; }
 .theme-card {
   display: block;
   background: var(--surface);
@@ -610,6 +680,8 @@ a.obj:hover { transform: translateY(-3px); border-color: var(--accent); box-shad
   .admin__nav { flex-direction: row; flex-wrap: wrap; }
   .admin__navsep, .admin__navfoot { display: none; }
   .admin__main { padding: 24px 18px 40px; }
+  .hero { grid-template-columns: 1fr; padding: 36px 28px; gap: 28px; min-height: 0; }
+  .hero__art { height: 260px; order: 2; }
 }
 @media (max-width: 640px) {
   .nav__links { display: none; }

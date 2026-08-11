@@ -10,7 +10,9 @@ def create_app():
                 template_folder=os.path.join(BASE_DIR, 'app', 'templates'),
                 static_folder=os.path.join(BASE_DIR, 'static'))
     app.config.from_object(Config)
-    
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
+    app.jinja_env.auto_reload = True
+
     db.init_app(app)
     login_manager.init_app(app)
     login_manager.login_view = 'admin_login'
