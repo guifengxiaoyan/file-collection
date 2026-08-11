@@ -1,67 +1,81 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 
-{% block title %}编辑收集主题{% endblock %}
+{% block sidebar %}
+<aside class="admin__sidebar">
+    <div class="admin__brand"><i class="fas fa-cog"></i> 管理后台</div>
+    <nav class="admin__nav">
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
+        <a class="admin__navlink admin__navlink--active" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+    </nav>
+    <div class="admin__navsep"></div>
+    <div class="admin__navfoot">
+        <a class="admin__navlink" href="{{ url_for('change_password') }}"><i class="fas fa-key"></i> 修改密码</a>
+        <a class="admin__navlink" href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+    </div>
+</aside>
+{% endblock %}
 
-{% block content %}
-<div class="container form-container">
-    <h2><i class="fas fa-edit"></i> 编辑收集主题</h2>
-    <form method="POST" enctype="multipart/form-data" class="theme-form">
-        <div class="form-group">
-            <label><i class="fas fa-folder"></i> 主题名称 *</label>
-            <input type="text" name="title" value="{{ theme.title }}" required>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-file-alt"></i> 描述说明</label>
-            <textarea name="description" rows="3">{{ theme.description or '' }}</textarea>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-bullhorn"></i> 主题公告</label>
-            <textarea name="announcement" rows="4" placeholder="输入主题公告内容">{{ theme.announcement or '' }}</textarea>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-calendar-alt"></i> 截止时间 *</label>
-            <input type="datetime-local" name="deadline" value="{{ theme.deadline.strftime('%Y-%m-%dT%H:%M') }}" required>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-user"></i> 收集人</label>
-            <input type="text" name="collector_name" value="{{ theme.collector_name or '' }}">
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-paperclip"></i> 添加新附件</label>
-            <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
-            <label for="attachment-input" class="btn btn-secondary" style="cursor:pointer;">
-                <i class="fas fa-upload"></i> 选择文件
-            </label>
-            <div id="selected-files-list" style="margin-top: 10px;"></div>
-            <div id="file-list-hint" style="margin-top: 10px; color: var(--text-secondary);">
-                <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
+{% block admin_content %}
+<div class="form-page">
+    <div class="form-card">
+        <h2><i class="fas fa-edit"></i> 编辑收集主题</h2>
+        <form method="POST" enctype="multipart/form-data" class="theme-form">
+            <div class="form__group">
+                <label class="form__label" for="title"><i class="fas fa-folder"></i> 主题名称 *</label>
+                <input type="text" id="title" name="title" value="{{ theme.title }}" required>
             </div>
-            <input type="hidden" id="removed-files" name="removed_files" value="">
-        {% if theme.attachments %}
-            <div style="margin-top: 15px;">
-                <label><i class="fas fa-file-alt"></i> 当前附件：</label>
-                <div class="attachment-list" style="margin-top: 8px;">
-                    {% for att in theme.attachments %}
-                    <span class="existing-attachment">
-                        <i class="fas fa-file"></i> {{ att.original_name }}
-                        <a href="{{ url_for('delete_theme_attachment', attachment_id=att.id) }}" class="btn btn-danger btn-small" style="margin-left: 8px; padding: 2px 8px; font-size: 11px;" onclick="return confirm('确定删除此附件?')">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                    </span>
-                    {% endfor %}
+            <div class="form__group">
+                <label class="form__label" for="description"><i class="fas fa-file-alt"></i> 描述说明</label>
+                <textarea id="description" name="description" rows="3">{{ theme.description or '' }}</textarea>
+            </div>
+            <div class="form__group">
+                <label class="form__label" for="announcement"><i class="fas fa-bullhorn"></i> 主题公告</label>
+                <textarea id="announcement" name="announcement" rows="4" placeholder="输入主题公告内容">{{ theme.announcement or '' }}</textarea>
+            </div>
+            <div class="form__group">
+                <label class="form__label" for="deadline"><i class="fas fa-calendar-alt"></i> 截止时间 *</label>
+                <input type="datetime-local" id="deadline" name="deadline" value="{{ theme.deadline.strftime('%Y-%m-%dT%H:%M') }}" required>
+            </div>
+            <div class="form__group">
+                <label class="form__label" for="collector_name"><i class="fas fa-user"></i> 收集人</label>
+                <input type="text" id="collector_name" name="collector_name" value="{{ theme.collector_name or '' }}">
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-paperclip"></i> 添加新附件</label>
+                <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
+                <label for="attachment-input" class="btn btn--secondary btn--sm" style="cursor:pointer;">
+                    <i class="fas fa-upload"></i> 选择文件
+                </label>
+                {% if theme.attachments %}
+                <div style="margin-top: 12px;">
+                    <span class="form__label" style="margin-bottom:8px;"><i class="fas fa-file-alt"></i> 当前附件：</span>
+                    <div class="attachment-list" style="margin-top: 8px;">
+                        {% for att in theme.attachments %}
+                        <span class="existing-attachment">
+                            <i class="fas fa-file"></i> {{ att.original_name }}
+                            <a href="{{ url_for('delete_theme_attachment', attachment_id=att.id) }}" class="btn btn--danger btn--sm" onclick="return confirm('确定删除此附件?')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </span>
+                        {% endfor %}
+                    </div>
                 </div>
+                {% endif %}
+                <div id="selected-files-list" style="margin-top: 12px;"></div>
+                <div id="file-list-hint" class="form__hint"><i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式</div>
+                <input type="hidden" id="removed-files" name="removed_files" value="">
             </div>
-            {% endif %}
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> 保存修改
-            </button>
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> 取消
-            </a>
-        </div>
-    </form>
+            <div class="form__actions">
+                <button type="submit" class="btn btn--primary">
+                    <i class="fas fa-save"></i> 保存修改
+                </button>
+                <a href="{{ url_for('admin_dashboard') }}?tab=themes" class="btn btn--secondary">
+                    <i class="fas fa-arrow-left"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -71,7 +85,7 @@ function updateFileList() {
     var input = document.getElementById('attachment-input');
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
-    
+
     for (var i = 0; i < input.files.length; i++) {
         var file = input.files[i];
         var exists = false;
@@ -85,7 +99,7 @@ function updateFileList() {
             selectedFiles.push(file);
         }
     }
-    
+
     renderFileList();
     updateFileInput();
 }
@@ -93,12 +107,12 @@ function updateFileList() {
 function renderFileList() {
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
-    
+
     if (selectedFiles.length > 0) {
         var html = '<i class="fas fa-files"></i> 已选择 ' + selectedFiles.length + ' 个文件：<br>';
         for (var i = 0; i < selectedFiles.length; i++) {
             var fileName = selectedFiles[i].name.replace(/'/g, "\\'").replace(/"/g, '\\"');
-            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFileByName(\'' + fileName + '\')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
+            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:8px; font-size:13px; border:1px solid var(--border-color);"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFileByName(\'' + fileName + '\')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
         }
         fileListDiv.innerHTML = html;
         hintDiv.style.display = 'none';
@@ -128,16 +142,4 @@ function updateFileInput() {
     input.files = dataTransfer.files;
 }
 </script>
-
-<style>
-.existing-attachment {
-    display: inline-block;
-    background: var(--bg-dark);
-    padding: 6px 12px;
-    margin: 4px 4px 4px 0;
-    border-radius: 4px;
-    font-size: 13px;
-    border: 1px solid var(--border-color);
-}
-</style>
 {% endblock %}

@@ -1,19 +1,18 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>页面未找到</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body class="error-page">
-    <div class="error-container">
-        <h1>404</h1>
-        <p><i class="fas fa-search"></i> 页面未找到</p>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">
-            <i class="fas fa-home"></i> 返回首页
-        </a>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="error">
+    <div class="error__card">
+        <div class="error__code">404</div>
+        <p class="error__text"><i class="fas fa-search"></i> 抱歉，您访问的页面不存在或已被移动。</p>
+        <div class="error__actions">
+            <a href="{{ url_for('index') }}" class="btn btn--primary">
+                <i class="fas fa-home"></i> 返回首页
+            </a>
+        </div>
+        <div class="error__foot">
+            <a href="{{ url_for('admin_login') }}"><i class="fas fa-user-shield"></i> 管理员入口</a>
+        </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

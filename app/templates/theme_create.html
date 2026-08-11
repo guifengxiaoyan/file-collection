@@ -1,71 +1,70 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 
-{% block title %}创建收集主题{% endblock %}
-
-{% block head %}
-{{ super() }}
+{% block sidebar %}
+<aside class="admin__sidebar">
+    <div class="admin__brand"><i class="fas fa-cog"></i> 管理后台</div>
+    <nav class="admin__nav">
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
+        <a class="admin__navlink admin__navlink--active" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+    </nav>
+    <div class="admin__navsep"></div>
+    <div class="admin__navfoot">
+        <a class="admin__navlink" href="{{ url_for('change_password') }}"><i class="fas fa-key"></i> 修改密码</a>
+        <a class="admin__navlink" href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+    </div>
+</aside>
 {% endblock %}
 
-{% block content %}
-<div class="container form-container">
-    <h2><i class="fas fa-plus-circle"></i> 创建收集主题</h2>
-    <form method="POST" enctype="multipart/form-data" class="theme-form" id="theme-form">
-        <div class="form-group">
-            <label><i class="fas fa-folder"></i> 主题名称 *</label>
-            <input type="text" name="title" required placeholder="输入主题名称">
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-file-alt"></i> 描述说明</label>
-            <textarea name="description" rows="3" placeholder="输入主题描述（可选）"></textarea>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-bullhorn"></i> 主题公告</label>
-            <textarea name="announcement" rows="4" placeholder="输入主题公告内容，访问者可在主题页和上传页面看到此公告"></textarea>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-calendar-alt"></i> 截止时间 *</label>
-            <input type="datetime-local" name="deadline" required>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-user"></i> 收集人</label>
-            <input type="text" name="collector_name" id="collector_name" placeholder="输入收集人姓名（可选）">
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-users"></i> 收集对象（一行一个）</label>
-            <textarea name="collector_objects" id="collector_objects" rows="6" placeholder="从粘贴板粘贴多个收集对象名称，一行一个，例如：
-张三
-李四
-王五"></textarea>
-            <div style="margin-top: 8px;">
-                <input type="file" name="objects_excel_file" id="objects_excel_input" accept=".xls,.xlsx" style="display:none;" onchange="handleObjectsExcel()">
-                <button type="button" class="btn btn-secondary btn-small" onclick="document.getElementById('objects_excel_input').click()">
-                    <i class="fas fa-file-import"></i> Excel导入收集对象
-                </button>
-                <span id="objects_excel_name" style="margin-left: 10px; color: var(--text-secondary); font-size: 13px;"></span>
+{% block admin_content %}
+<div class="form-page">
+    <div class="form-card">
+        <h2><i class="fas fa-plus-circle"></i> 创建收集主题</h2>
+        <form method="POST" enctype="multipart/form-data" id="theme-form">
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-folder"></i> 主题名称 *</label>
+                <input type="text" name="title" required placeholder="输入主题名称">
             </div>
-            <div id="collector_objects_count" style="margin-top: 8px; color: var(--primary); font-size: 13px;"></div>
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-paperclip"></i> 附件（可上传多个）</label>
-            <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
-            <label for="attachment-input" class="btn btn-secondary" style="cursor:pointer;">
-                <i class="fas fa-upload"></i> 选择文件
-            </label>
-            <div id="selected-files-list" style="margin-top: 10px;"></div>
-            <div id="file-list-hint" style="margin-top: 10px; color: var(--text-secondary);">
-                <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-file-alt"></i> 描述说明</label>
+                <textarea name="description" rows="3" placeholder="输入主题描述（可选）"></textarea>
             </div>
-        </div>
-        <input type="hidden" id="removed-files" name="removed_files" value="">
-        <div class="form-actions">
-            <button type="submit" class="btn btn-success">
-                <i class="fas fa-plus"></i> 创建主题
-            </button>
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> 取消
-            </a>
-        </div>
-    </form>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-bullhorn"></i> 主题公告</label>
+                <textarea name="announcement" rows="4" placeholder="访问者可在主题页和上传页面看到此公告"></textarea>
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-calendar-alt"></i> 截止时间 *</label>
+                <input type="datetime-local" name="deadline" required>
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-user"></i> 收集人</label>
+                <input type="text" name="collector_name" id="collector_name" placeholder="输入收集人姓名（可选）">
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-users"></i> 收集对象（一行一个）</label>
+                <textarea name="collector_objects" id="collector_objects" rows="6" placeholder="张三&#10;李四&#10;王五"></textarea>
+                <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="file" name="objects_excel_file" id="objects_excel_input" accept=".xls,.xlsx" style="display:none;" onchange="handleObjectsExcel()">
+                    <button type="button" class="btn btn--secondary btn--sm" onclick="document.getElementById('objects_excel_input').click()"><i class="fas fa-file-import"></i> Excel导入收集对象</button>
+                    <span id="objects_excel_name" style="color:var(--muted); font-size:13px;"></span>
+                </div>
+                <div id="collector_objects_count" style="margin-top:8px; color:var(--accent); font-size:13px;"></div>
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-paperclip"></i> 附件（可上传多个）</label>
+                <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
+                <label for="attachment-input" class="btn btn--secondary btn--sm" style="cursor:pointer;"><i class="fas fa-upload"></i> 选择文件</label>
+                <div id="selected-files-list" style="margin-top:10px;"></div>
+                <div id="file-list-hint" class="form__hint"><i class="fas fa-info-circle"></i> 支持多个文件，如 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等</div>
+            </div>
+            <input type="hidden" id="removed-files" name="removed_files" value="">
+            <div class="form__actions">
+                <button type="submit" class="btn btn--success"><i class="fas fa-plus"></i> 创建主题</button>
+                <a href="{{ url_for('admin_dashboard') }}?tab=themes" class="btn btn--secondary"><i class="fas fa-arrow-left"></i> 取消</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -76,74 +75,42 @@ function updateFileList() {
     var input = document.getElementById('attachment-input');
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
-    
-    if (!input || !fileListDiv) {
-        console.error('Required elements not found');
-        return;
-    }
-    
-    // Get newly selected files (files in input.files that are not in selectedFiles)
+
+    if (!input || !fileListDiv) { console.error('Required elements not found'); return; }
+
     var newFiles = [];
     for (var i = 0; i < input.files.length; i++) {
         var file = input.files[i];
         var isNew = true;
         for (var j = 0; j < selectedFiles.length; j++) {
-            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) {
-                isNew = false;
-                break;
-            }
+            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) { isNew = false; break; }
         }
-        if (isNew) {
-            newFiles.push(file);
-        }
+        if (isNew) newFiles.push(file);
     }
-    
-    // Add new files to selectedFiles
-    for (var i = 0; i < newFiles.length; i++) {
-        selectedFiles.push(newFiles[i]);
-    }
-    
-    console.log('Total selected files:', selectedFiles.length);
+    for (var i = 0; i < newFiles.length; i++) selectedFiles.push(newFiles[i]);
+
     renderFileList();
-    
-    // Update input.files to match selectedFiles
     updateFileInput();
 }
 
 function updateFileInput() {
     var input = document.getElementById('attachment-input');
     if (!input) return;
-    
-    // Clear and rebuild the file input
     input.value = '';
-    
-    // Create new DataTransfer
     var dataTransfer = new DataTransfer();
-    
-    // Add files one by one
-    for (var i = 0; i < selectedFiles.length; i++) {
-        dataTransfer.items.add(selectedFiles[i]);
-    }
-    
-    // Set the files
+    for (var i = 0; i < selectedFiles.length; i++) dataTransfer.items.add(selectedFiles[i]);
     input.files = dataTransfer.files;
-    
-    console.log('Input files count:', input.files.length);
 }
 
 function renderFileList() {
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
-    
-    if (!fileListDiv) {
-        console.error('selected-files-list not found');
-        return;
-    }
-    
+    if (!fileListDiv) { console.error('selected-files-list not found'); return; }
+
     if (selectedFiles.length > 0) {
         var html = '<i class="fas fa-files"></i> 已选择 ' + selectedFiles.length + ' 个文件：<br>';
         for (var i = 0; i < selectedFiles.length; i++) {
-            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFile(' + i + ')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
+            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:8px; font-size:13px; border:1px solid var(--border-color);"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFile(' + i + ')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
         }
         fileListDiv.innerHTML = html;
         hintDiv.style.display = 'none';
@@ -162,7 +129,7 @@ function removeFile(index) {
 function updateObjectsCount() {
     var textarea = document.getElementById('collector_objects');
     var countDiv = document.getElementById('collector_objects_count');
-    var lines = textarea.value.split('\n').filter(line => line.trim() !== '');
+    var lines = textarea.value.split('\n').filter(function(l){ return l.trim() !== ''; });
     countDiv.textContent = '已添加 ' + lines.length + ' 个收集对象';
 }
 
@@ -172,11 +139,11 @@ function handleObjectsExcel() {
     var input = document.getElementById('objects_excel_input');
     var nameSpan = document.getElementById('objects_excel_name');
     var textarea = document.getElementById('collector_objects');
-    
+
     if (input.files.length > 0) {
         var file = input.files[0];
         nameSpan.textContent = '已选择: ' + file.name;
-        
+
         ensureXlsxLoaded(function() {
             var reader = new FileReader();
             reader.onload = function(e) {
@@ -185,14 +152,8 @@ function handleObjectsExcel() {
                     var workbook = XLSX.read(data, {type: 'array'});
                     var sheetName = workbook.SheetNames[0];
                     var sheet = workbook.Sheets[sheetName];
-                    
-                    if (!sheet || !sheet['!ref']) {
-                        alert('Excel文件内容为空');
-                        return;
-                    }
-                    
+                    if (!sheet || !sheet['!ref']) { alert('Excel文件内容为空'); return; }
                     var range = XLSX.utils.decode_range(sheet['!ref']);
-                    
                     var names = [];
                     for (var row = range.s.r; row <= range.e.r; row++) {
                         var cellAddress = XLSX.utils.encode_cell({r: row, c: 0});
@@ -202,43 +163,27 @@ function handleObjectsExcel() {
                             if (name) names.push(name);
                         }
                     }
-                    
-                    if (names.length === 0) {
-                        alert('未在Excel中找到有效数据');
-                        return;
-                    }
-                    
-                    if (textarea.value.trim() === '') {
-                        textarea.value = names.join('\n');
-                    } else {
-                        textarea.value = textarea.value.trim() + '\n' + names.join('\n');
-                    }
+                    if (names.length === 0) { alert('未在Excel中找到有效数据'); return; }
+                    if (textarea.value.trim() === '') textarea.value = names.join('\n');
+                    else textarea.value = textarea.value.trim() + '\n' + names.join('\n');
                     updateObjectsCount();
                 } catch (error) {
                     console.error('Excel解析错误:', error);
                     alert('Excel文件解析失败，请确保文件格式正确');
                 }
             };
-            reader.onerror = function() {
-                alert('文件读取失败');
-            };
+            reader.onerror = function() { alert('文件读取失败'); };
             reader.readAsArrayBuffer(file);
         });
     }
 }
 
 function ensureXlsxLoaded(callback) {
-    if (typeof XLSX !== 'undefined') {
-        callback();
-        return;
-    }
+    if (typeof XLSX !== 'undefined') { callback(); return; }
     var script = document.createElement('script');
     script.src = "{{ url_for('static', filename='js/xlsx.full.min.js') }}";
     script.onload = function() { callback(); };
-    script.onerror = function() { 
-        console.warn('Excel导入功能不可用'); 
-        alert('Excel导入功能加载失败，请刷新页面后重试');
-    };
+    script.onerror = function() { console.warn('Excel导入功能不可用'); alert('Excel导入功能加载失败，请刷新页面后重试'); };
     document.head.appendChild(script);
 }
 

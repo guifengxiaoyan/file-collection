@@ -1,34 +1,21 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <section class="theme-announcement-card">
-        <div class="announcement-glow"></div>
-        <div class="announcement-header">
-            <div class="announcement-icon-wrap">
-                <i class="fas fa-bullhorn"></i>
-            </div>
-            <div class="announcement-title-area">
-                <h3>{{ theme.title }}</h3>
-            </div>
-            <div class="announcement-deadline-badge">
-                <span><i class="fas fa-calendar"></i> 截止时间 {{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
-            </div>
+<div class="container page">
+    <!-- 主题头部 / 公告 -->
+    <section class="theme-head">
+        <div class="theme-head__top">
+            <h2 class="theme-head__title"><i class="fas fa-folder"></i> {{ theme.title }}</h2>
+            <span class="theme-head__deadline"><i class="fas fa-calendar"></i> 截止 {{ theme.deadline.strftime('%Y-%m-%d %H:%M') }}</span>
         </div>
         {% if theme.announcement or theme.attachments %}
-        <div class="announcement-body">
-            {% if theme.announcement %}
-            <div class="announcement-content">
-                <p>{{ theme.announcement }}</p>
-            </div>
-            {% endif %}
+        <div class="theme-head__body">
+            {% if theme.announcement %}<p>{{ theme.announcement }}</p>{% endif %}
             {% if theme.attachments %}
-            <div class="announcement-attachments">
+            <div class="theme-head__attach">
                 <i class="fas fa-paperclip"></i>
                 {% for att in theme.attachments %}
-                <a href="{{ url_for('download_theme_attachment', attachment_id=att.id) }}" class="btn-download">
-                    <i class="fas fa-download"></i> {{ att.original_name }}
-                </a>
+                <a href="{{ url_for('download_theme_attachment', attachment_id=att.id) }}"><i class="fas fa-download"></i> {{ att.original_name }}</a>
                 {% endfor %}
             </div>
             {% endif %}
@@ -36,76 +23,58 @@
         {% endif %}
     </section>
 
-    <section class="objects-section">
-        <div class="section-header-tech">
-            <div class="tech-icon"><i class="fas fa-list"></i></div>
-            <h3>收集对象</h3>
-            <div class="tech-line"></div>
-            <div class="section-deadline">
-                <span>剩余时间</span>
-                <i class="fas fa-hourglass-half"></i>
-                <span>{{ theme.deadline|time_remaining }}</span>
+    <!-- 统计 -->
+    <div class="stats">
+        <div class="stat stat--completed">
+            <div class="stat__icon"><i class="fas fa-check-circle"></i></div>
+            <div><div class="stat__value">{{ completed }}</div><div class="stat__label">已完成</div></div>
+        </div>
+        <div class="stat stat--pending">
+            <div class="stat__icon"><i class="fas fa-hourglass-half"></i></div>
+            <div><div class="stat__value">{{ incomplete|length }}</div><div class="stat__label">未完成</div></div>
+        </div>
+        <div class="stat stat--total">
+            <div class="stat__icon"><i class="fas fa-users"></i></div>
+            <div><div class="stat__value">{{ objects|length }}</div><div class="stat__label">总计</div></div>
+        </div>
+        <div class="stat stat--danger">
+            <div class="stat__icon"><i class="fas fa-hourglass-half"></i></div>
+            <div><div class="stat__value">{{ theme.deadline|time_remaining }}</div><div class="stat__label">剩余时间</div></div>
+        </div>
+    </div>
+
+    <!-- 收集对象 -->
+    <section class="section">
+        <div class="section__head">
+            <div>
+                <h2 class="section__title"><i class="fas fa-users"></i> 收集对象</h2>
+                <p class="section__sub">点击对象进入上传页面</p>
             </div>
         </div>
-        <div class="objects-grid">
+        <div class="objects stagger">
             {% for obj in objects %}
-            <a href="{{ url_for('upload_page', object_id=obj.id) }}" 
-               class="object-item {% if obj.is_completed %}completed{% endif %}">
-                <div class="object-top">
-                    <i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i>
-                </div>
-                <div class="object-name">{{ obj.name }}</div>
-                <div class="object-status">
-                    {% if obj.is_completed %}
-                    <span class="status-completed"><i class="fas fa-check"></i> 已完成</span>
-                    {% else %}
-                    <span class="status-pending"><i class="fas fa-hourglass-half"></i> 待上传</span>
-                    {% endif %}
+            <a href="{{ url_for('upload_page', object_id=obj.id) }}" class="obj {% if obj.is_completed %}obj--done{% endif %}">
+                <div class="obj__icon"><i class="fas {% if obj.is_completed %}fa-check-circle{% else %}fa-user{% endif %}"></i></div>
+                <div class="obj__name">{{ obj.name }}</div>
+                <div class="obj__status {% if obj.is_completed %}is-done{% else %}is-pending{% endif %}">
+                    {% if obj.is_completed %}<i class="fas fa-check"></i> 已完成{% else %}<i class="fas fa-hourglass-half"></i> 待上传{% endif %}
                 </div>
             </a>
             {% endfor %}
         </div>
     </section>
 
-    <div class="stats-summary">
-        <div class="stat-card stat-completed">
-            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-content">
-                <span class="stat-value">{{ completed }}</span>
-                <span class="stat-label">已完成</span>
-            </div>
-        </div>
-        <div class="stat-card stat-pending">
-            <div class="stat-icon"><i class="fas fa-clock"></i></div>
-            <div class="stat-content">
-                <span class="stat-value">{{ incomplete|length }}</span>
-                <span class="stat-label">未完成</span>
-            </div>
-        </div>
-        <div class="stat-card stat-total">
-            <div class="stat-icon"><i class="fas fa-users"></i></div>
-            <div class="stat-content">
-                <span class="stat-value">{{ objects|length }}</span>
-                <span class="stat-label">总计</span>
-            </div>
-        </div>
-    </div>
-
     {% if incomplete %}
-    <div class="incomplete-list">
+    <div class="incomplete">
         <h4><i class="fas fa-exclamation-triangle"></i> 未完成的收集对象</h4>
         <ul>
-            {% for obj in incomplete %}
-            <li>{{ obj.name }}</li>
-            {% endfor %}
+            {% for obj in incomplete %}<li>{{ obj.name }}</li>{% endfor %}
         </ul>
     </div>
     {% endif %}
 
     <div class="page-actions">
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> 返回首页
-        </a>
+        <a href="{{ url_for('index') }}" class="btn btn--secondary"><i class="fas fa-arrow-left"></i> 返回首页</a>
     </div>
 </div>
 {% endblock %}

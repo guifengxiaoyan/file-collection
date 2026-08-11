@@ -1,55 +1,61 @@
-{% extends "base.html" %}
+{% extends "admin_base.html" %}
 
-{% block title %}编辑公告{% endblock %}
+{% block sidebar %}
+<aside class="admin__sidebar">
+    <div class="admin__brand"><i class="fas fa-cog"></i> 管理后台</div>
+    <nav class="admin__nav">
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
+        <a class="admin__navlink admin__navlink--active" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+    </nav>
+    <div class="admin__navsep"></div>
+    <div class="admin__navfoot">
+        <a class="admin__navlink" href="{{ url_for('change_password') }}"><i class="fas fa-key"></i> 修改密码</a>
+        <a class="admin__navlink" href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+    </div>
+</aside>
+{% endblock %}
 
-{% block content %}
-<div class="container form-container">
-    <h2><i class="fas fa-edit"></i> 编辑公告</h2>
-    <form method="POST" enctype="multipart/form-data" class="announcement-form">
-        <div class="form-group">
-            <label><i class="fas fa-heading"></i> 公告标题 *</label>
-            <input type="text" name="title" required placeholder="输入公告标题" value="{{ announcement.title }}">
-        </div>
-        <div class="form-group">
-            <label><i class="fas fa-file-alt"></i> 公告内容</label>
-            <textarea name="content" rows="5" placeholder="输入公告内容">{{ announcement.content or '' }}</textarea>
-        </div>
-        {% if announcement.attachments %}
-        <div class="form-group">
-            <label><i class="fas fa-paperclip"></i> 当前附件</label>
-            <div class="current-attachments">
-                {% for att in announcement.attachments %}
-                <div class="attachment-item">
-                    <span><i class="fas fa-file"></i> {{ att.original_name }}</span>
-                    <a href="{{ url_for('delete_announcement_attachment', attachment_id=att.id) }}" class="btn btn-danger btn-small" onclick="return confirm('确定删除此附件?')">
-                        <i class="fas fa-trash"></i> 删除
-                    </a>
+{% block admin_content %}
+<div class="form-page">
+    <div class="form-card">
+        <h2><i class="fas fa-edit"></i> 编辑公告</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-heading"></i> 公告标题 *</label>
+                <input type="text" name="title" required placeholder="输入公告标题" value="{{ announcement.title }}">
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-file-alt"></i> 公告内容</label>
+                <textarea name="content" rows="5" placeholder="输入公告内容">{{ announcement.content or '' }}</textarea>
+            </div>
+            {% if announcement.attachments %}
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-paperclip"></i> 当前附件</label>
+                <div class="current-attachments">
+                    {% for att in announcement.attachments %}
+                    <div class="attachment-item">
+                        <span><i class="fas fa-file"></i> {{ att.original_name }}</span>
+                        <a href="{{ url_for('delete_announcement_attachment', attachment_id=att.id) }}" onclick="return confirm('确定删除此附件?')"><i class="fas fa-trash"></i></a>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
-        </div>
-        {% endif %}
-        <div class="form-group">
-            <label><i class="fas fa-upload"></i> 添加新附件（可上传多个）</label>
-            <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
-            <label for="attachment-input" class="btn btn-secondary" style="cursor:pointer;">
-                <i class="fas fa-upload"></i> 选择文件
-            </label>
-            <div id="selected-files-list" style="margin-top: 10px;"></div>
-            <div id="file-list-hint" style="margin-top: 10px; color: var(--text-secondary);">
-                <i class="fas fa-info-circle"></i> 支持多个文件，可选择 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等格式
+            {% endif %}
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-upload"></i> 添加新附件（可上传多个）</label>
+                <input type="file" name="attachments" id="attachment-input" multiple style="display:none;" onchange="updateFileList()">
+                <label for="attachment-input" class="btn btn--secondary btn--sm" style="cursor:pointer;"><i class="fas fa-upload"></i> 选择文件</label>
+                <div id="selected-files-list" style="margin-top:10px;"></div>
+                <div id="file-list-hint" class="form__hint"><i class="fas fa-info-circle"></i> 支持多个文件，如 pdf, doc, docx, xls, xlsx, zip, rar, txt, png, jpg 等</div>
             </div>
-        </div>
-        <input type="hidden" id="removed-files" name="removed_files" value="">
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> 保存修改
-            </button>
-            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> 返回
-            </a>
-        </div>
-    </form>
+            <input type="hidden" id="removed-files" name="removed_files" value="">
+            <div class="form__actions">
+                <button type="submit" class="btn btn--primary"><i class="fas fa-save"></i> 保存修改</button>
+                <a href="{{ url_for('admin_dashboard') }}?tab=announcements" class="btn btn--secondary"><i class="fas fa-arrow-left"></i> 返回</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -59,21 +65,15 @@ function updateFileList() {
     var input = document.getElementById('attachment-input');
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
-    
+
     for (var i = 0; i < input.files.length; i++) {
         var file = input.files[i];
         var exists = false;
         for (var j = 0; j < selectedFiles.length; j++) {
-            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) {
-                exists = true;
-                break;
-            }
+            if (selectedFiles[j].name === file.name && selectedFiles[j].size === file.size) { exists = true; break; }
         }
-        if (!exists) {
-            selectedFiles.push(file);
-        }
+        if (!exists) selectedFiles.push(file);
     }
-    
     renderFileList();
     updateFileInput();
 }
@@ -81,12 +81,12 @@ function updateFileList() {
 function renderFileList() {
     var fileListDiv = document.getElementById('selected-files-list');
     var hintDiv = document.getElementById('file-list-hint');
-    
+
     if (selectedFiles.length > 0) {
         var html = '<i class="fas fa-files"></i> 已选择 ' + selectedFiles.length + ' 个文件：<br>';
         for (var i = 0; i < selectedFiles.length; i++) {
             var fileName = selectedFiles[i].name.replace(/'/g, "\\'").replace(/"/g, '\\"');
-            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:4px; font-size:13px;"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFileByName(\'' + fileName + '\')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
+            html += '<span style="display:inline-flex; align-items:center; background:var(--bg-dark); padding:4px 10px; margin:4px 4px 4px 0; border-radius:8px; font-size:13px; border:1px solid var(--border-color);"><i class="fas fa-file"></i> ' + selectedFiles[i].name + ' <span onclick="removeFileByName(\'' + fileName + '\')" style="color:var(--danger); cursor:pointer; margin-left:6px;"><i class="fas fa-times"></i></span></span>';
         }
         fileListDiv.innerHTML = html;
         hintDiv.style.display = 'none';
@@ -98,10 +98,7 @@ function renderFileList() {
 
 function removeFileByName(fileName) {
     for (var i = 0; i < selectedFiles.length; i++) {
-        if (selectedFiles[i].name === fileName) {
-            selectedFiles.splice(i, 1);
-            break;
-        }
+        if (selectedFiles[i].name === fileName) { selectedFiles.splice(i, 1); break; }
     }
     renderFileList();
     updateFileInput();
@@ -110,9 +107,7 @@ function removeFileByName(fileName) {
 function updateFileInput() {
     var input = document.getElementById('attachment-input');
     var dataTransfer = new DataTransfer();
-    for (var i = 0; i < selectedFiles.length; i++) {
-        dataTransfer.items.add(selectedFiles[i]);
-    }
+    for (var i = 0; i < selectedFiles.length; i++) dataTransfer.items.add(selectedFiles[i]);
     input.files = dataTransfer.files;
 }
 </script>
