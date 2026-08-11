@@ -1,6 +1,7 @@
 import os
 import shutil
 from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
 from models import db, Admin
 from config import Config
 
@@ -12,6 +13,16 @@ def init_default_admin():
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def sanitize_stored_filename(original_name):
+    disk_name = secure_filename(original_name)
+    if not disk_name:
+        disk_name = 'file'
+    name, ext = os.path.splitext(disk_name)
+    if not ext:
+        _, orig_ext = os.path.splitext(original_name)
+        disk_name = f'{name}{orig_ext}'
+    return disk_name
 
 def get_theme_folder(theme_id):
     folder = os.path.join(Config.UPLOAD_FOLDER, f'theme_{theme_id}')

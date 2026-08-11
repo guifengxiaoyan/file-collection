@@ -3,12 +3,11 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
-from werkzeug.utils import secure_filename
 from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, beijing_now
 from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
-    rename_uploaded_file, create_export_archive
+    rename_uploaded_file, sanitize_stored_filename, create_export_archive
 )
 import openpyxl
 
@@ -116,15 +115,16 @@ def register_routes(app):
                 files = request.files.getlist('file')
                 for file in files:
                     if file and file.filename and allowed_file(file.filename, Config.ALLOWED_EXTENSIONS):
-                        filename = secure_filename(file.filename)
-                        stored_name = rename_uploaded_file(theme.id, collection_object.id, filename, filename)
+                        original_name = file.filename
+                        disk_name = sanitize_stored_filename(original_name)
+                        stored_name = rename_uploaded_file(theme.id, collection_object.id, disk_name, disk_name)
                         folder = get_object_folder(theme.id, collection_object.id)
                         file_path = os.path.join(folder, stored_name)
                         file.save(file_path)
                         
                         attachment = Attachment(
                             filename=stored_name,
-                            original_name=filename,
+                            original_name=original_name,
                             collection_object_id=collection_object.id
                         )
                         db.session.add(attachment)
@@ -304,7 +304,7 @@ def register_routes(app):
                         if file.filename in removed_files:
                             continue
                         original_name = file.filename
-                        filename = secure_filename(original_name)
+                        filename = sanitize_stored_filename(original_name)
                         folder = get_theme_folder(theme.id)
                         counter = 1
                         while os.path.exists(os.path.join(folder, filename)):
@@ -481,7 +481,7 @@ def register_routes(app):
                         if file.filename in removed_files:
                             continue
                         original_name = file.filename
-                        filename = secure_filename(original_name)
+                        filename = sanitize_stored_filename(original_name)
                         folder = get_announcement_folder()
                         counter = 1
                         while os.path.exists(os.path.join(folder, filename)):
@@ -540,7 +540,7 @@ def register_routes(app):
                         if file.filename in removed_files:
                             continue
                         original_name = file.filename
-                        filename = secure_filename(original_name)
+                        filename = sanitize_stored_filename(original_name)
                         folder = get_announcement_folder()
                         counter = 1
                         while os.path.exists(os.path.join(folder, filename)):
@@ -590,7 +590,7 @@ def register_routes(app):
                 for file in files:
                     if file and file.filename and allowed_file(file.filename, Config.ALLOWED_EXTENSIONS):
                         original_name = file.filename
-                        filename = secure_filename(original_name)
+                        filename = sanitize_stored_filename(original_name)
                         folder = get_theme_folder(theme.id)
                         counter = 1
                         while os.path.exists(os.path.join(folder, filename)):
