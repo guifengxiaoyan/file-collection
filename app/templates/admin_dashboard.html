@@ -4,9 +4,10 @@
 <aside class="admin__sidebar">
     <div class="admin__brand"><i class="fas fa-cog"></i> 管理后台</div>
     <nav class="admin__nav">
-        <button class="admin__navlink main-tab-btn admin__navlink--active" data-tab="overview" onclick="showMainTab('overview')"><i class="fas fa-chart-bar"></i> 概览</button>
-        <button class="admin__navlink main-tab-btn" data-tab="announcements" onclick="showMainTab('announcements')"><i class="fas fa-bullhorn"></i> 公告管理</button>
-        <button class="admin__navlink main-tab-btn" data-tab="themes" onclick="showMainTab('themes')"><i class="fas fa-folder-open"></i> 主题管理</button>
+        <a class="admin__navlink {{ 'admin__navlink--active' if request.args.get('tab', 'overview') == 'overview' }}" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
+        <a class="admin__navlink {{ 'admin__navlink--active' if request.args.get('tab') == 'announcements' }}" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
+        <a class="admin__navlink {{ 'admin__navlink--active' if request.args.get('tab') == 'themes' }}" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+        <a class="admin__navlink" href="{{ url_for('object_templates') }}"><i class="fas fa-clipboard-list"></i> 收集对象模板</a>
     </nav>
     <div class="admin__navsep"></div>
     <div class="admin__navfoot">

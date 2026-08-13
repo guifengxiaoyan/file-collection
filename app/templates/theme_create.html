@@ -7,6 +7,7 @@
         <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
         <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
         <a class="admin__navlink admin__navlink--active" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+        <a class="admin__navlink" href="{{ url_for('object_templates') }}"><i class="fas fa-clipboard-list"></i> 收集对象模板</a>
     </nav>
     <div class="admin__navsep"></div>
     <div class="admin__navfoot">
@@ -50,6 +51,29 @@
                     <span id="objects_excel_name" style="color:var(--muted); font-size:13px;"></span>
                 </div>
                 <div id="collector_objects_count" style="margin-top:8px; color:var(--accent); font-size:13px;"></div>
+            </div>
+            <div class="form__group">
+                <label class="form__label"><i class="fas fa-clipboard-list"></i> 从对象模板快速添加</label>
+                <p class="form__hint"><i class="fas fa-info-circle"></i> 勾选模板可一键加入下方收集对象，与手动输入、Excel 导入合并生效。</p>
+                {% if templates_by_cat %}
+                <div class="tpl-groups">
+                    {% for cat, items in templates_by_cat.items() %}
+                    <div class="tpl-group">
+                        <div class="tpl-group__title">{{ cat }}</div>
+                        <div class="tpl-chips">
+                            {% for t in items %}
+                            <label class="tpl-chip">
+                                <input type="checkbox" name="selected_templates" value="{{ t.id }}">
+                                <span>{{ t.name }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="form__hint">暂无模板，请先到 <a href="{{ url_for('object_templates') }}" style="color:var(--accent);">收集对象模板管理</a> 创建。</div>
+                {% endif %}
             </div>
             <div class="form__group">
                 <label class="form__label"><i class="fas fa-paperclip"></i> 附件（可上传多个）</label>

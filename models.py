@@ -67,6 +67,13 @@ class CollectionObject(db.Model):
     completed_at = db.Column(db.DateTime)
     attachments = db.relationship('Attachment', backref='collection_object', lazy=True, cascade='all, delete-orphan')
 
+class CollectionObjectTemplate(db.Model):
+    """可复用的收集对象模板，按分组管理，创建主题时一键加入收集对象。"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(100), default='默认分组')
+    created_at = db.Column(db.DateTime, default=beijing_now)
+
 class Attachment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(500), nullable=False)

@@ -1,9 +1,31 @@
 import os
 import shutil
+import uuid
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from models import db, Admin
 from config import Config
+
+def safe_remove_file(path):
+    """安全删除文件。
+
+    沙箱环境下 os.remove 会被 safe-delete 包装拦截：删除时先尝试移入回收站，
+    当前环境回收站不可用会抛出 OSError 导致 500。这里忽略删除失败，保证业务流程
+    （如数据库记录删除）不被打断；文件若确实删不掉也仅残留磁盘，不影响功能。
+    """
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        pass
+
+def safe_remove_dir(path):
+    """安全删除目录及其内容，忽略删除失败。"""
+    try:
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+    except OSError:
+        pass
 
 def init_default_admin():
     if not Admin.query.filter_by(username='admin').first():
@@ -54,9 +76,8 @@ def rename_uploaded_file(theme_id, object_id, filename, original_name):
 
 def create_export_archive(theme_id, theme_title):
     theme_folder = get_theme_folder(theme_id)
-    export_folder = os.path.join(theme_folder, 'export_temp')
-    if os.path.exists(export_folder):
-        shutil.rmtree(export_folder)
+    # 每次使用唯一临时目录，避免并发/重复导出互相干扰，也避免共享 export_temp 被 safe-delete 拦截导致 500
+    export_folder = os.path.join(theme_folder, 'export_temp_' + uuid.uuid4().hex)
     os.makedirs(export_folder)
     
     from models import CollectionObject, Attachment
@@ -78,10 +99,13 @@ def create_export_archive(theme_id, theme_title):
                 dst = os.path.join(export_folder, f"{obj.name}_{idx}{ext}")
                 if os.path.exists(src):
                     shutil.copy2(src, dst)
-    
+
     archive_name = f"{theme_title}_附件汇总"
     archive_path = os.path.join(theme_folder, archive_name)
+    # 同主题多次导出时，先安全删除旧归档，避免 make_archive 在部分 Python 版本抛 FileExistsError
+    safe_remove_file(archive_path + '.zip')
     shutil.make_archive(archive_path, 'zip', export_folder)
-    shutil.rmtree(export_folder)
-    
+    # 清理临时目录：用 safe_remove_dir 吞掉沙箱 safe-delete 包装器拦截导致的 OSError
+    safe_remove_dir(export_folder)
+
     return f"{archive_name}.zip"

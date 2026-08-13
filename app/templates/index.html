@@ -20,58 +20,48 @@
                 <div class="hero__stat"><b>{{ total_objects }}</b><span>收集对象</span></div>
                 <div class="hero__stat"><b>{{ done_objects }}</b><span>已完成提交</span></div>
             </div>
-            <div class="hero__cta">
-                <a href="#themes-section" class="btn btn--primary"><i class="fas fa-folder-open"></i> 查看收集主题</a>
-                <a href="{{ url_for('admin_login') }}" class="btn btn--ghost"><i class="fas fa-user-shield"></i> 管理员入口</a>
-            </div>
         </div>
-        <div class="hero__art" aria-hidden="true">
-            <div class="art__orb"></div>
-            <div class="art__zone"><i class="fas fa-cloud-upload-alt"></i></div>
-            <div class="art__file art__file--1"><i class="fas fa-file-pdf"></i> 2026Q1报告.pdf</div>
-            <div class="art__file art__file--2"><i class="fas fa-file-image"></i> 团队合影.png</div>
-            <div class="art__file art__file--3"><i class="fas fa-file-excel"></i> 预算表.xlsx</div>
-            <span class="art__dot art__dot--1"></span>
-            <span class="art__dot art__dot--2"></span>
-            <span class="art__dot art__dot--3"></span>
-        </div>
-    </section>
-
-    <!-- 公告栏 -->
-    {% if announcements %}
-    <section class="section">
-        <div class="section__head">
-            <div>
-                <h2 class="section__title"><i class="fas fa-bullhorn"></i> 公告栏</h2>
-                <p class="section__sub">管理员发布的重要通知</p>
-            </div>
-        </div>
-        <div class="announce-grid stagger">
-            {% for announcement in announcements %}
-            <article class="announce">
-                <div class="announce__head">
-                    <div class="announce__ic"><i class="fas fa-bullhorn"></i></div>
-                    <div>
-                        <h3 class="announce__title">{{ announcement.title }}</h3>
-                        <div class="announce__meta"><i class="far fa-clock"></i> {{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        <aside class="hero__aside">
+            {% if announcements %}
+            <div class="hero__aside-head"><i class="fas fa-bullhorn"></i> 公告栏</div>
+            <div class="hero__announce">
+                {% for announcement in announcements %}
+                <article class="announce announce--compact">
+                    <div class="announce__head">
+                        <div class="announce__ic"><i class="fas fa-bullhorn"></i></div>
+                        <div>
+                            <h3 class="announce__title">{{ announcement.title }}</h3>
+                            <div class="announce__meta"><i class="far fa-clock"></i> {{ announcement.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                        </div>
                     </div>
-                </div>
-                {% if announcement.content %}
-                <div class="announce__body">{{ announcement.content }}</div>
-                {% endif %}
-                {% if announcement.attachments %}
-                <div class="announce__attach">
-                    <i class="fas fa-paperclip"></i>
-                    {% for att in announcement.attachments %}
-                    <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}"><i class="fas fa-download"></i> {{ att.original_name }}</a>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </article>
-            {% endfor %}
-        </div>
+                    {% if announcement.content %}
+                    <div class="announce__body">{{ announcement.content }}</div>
+                    {% endif %}
+                    {% if announcement.attachments %}
+                    <div class="announce__attach">
+                        <i class="fas fa-paperclip"></i>
+                        {% for att in announcement.attachments %}
+                        <a href="{{ url_for('download_announcement_attachment', attachment_id=att.id) }}"><i class="fas fa-download"></i> {{ att.original_name }}</a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="hero__art" aria-hidden="true">
+                <div class="art__orb"></div>
+                <div class="art__zone"><i class="fas fa-cloud-upload-alt"></i></div>
+                <div class="art__file art__file--1"><i class="fas fa-file-pdf"></i> 2026Q1报告.pdf</div>
+                <div class="art__file art__file--2"><i class="fas fa-file-image"></i> 团队合影.png</div>
+                <div class="art__file art__file--3"><i class="fas fa-file-excel"></i> 预算表.xlsx</div>
+                <span class="art__dot art__dot--1"></span>
+                <span class="art__dot art__dot--2"></span>
+                <span class="art__dot art__dot--3"></span>
+            </div>
+            {% endif %}
+        </aside>
     </section>
-    {% endif %}
 
     <!-- 收集主题 -->
     <section class="section" id="themes-section">
@@ -100,14 +90,27 @@
                 {% if theme.collector_name %}
                 <div class="theme-card__collector"><i class="fas fa-user"></i> 收集人：{{ theme.collector_name }}</div>
                 {% endif %}
+                {% if theme.collection_objects %}
+                <div class="theme-card__people">
+                    <div class="people__head">
+                        <span class="people__label"><i class="fas fa-users"></i> 收集人员名单</span>
+                        <span class="people__count"><b>{{ t_done }}</b> / {{ t_total }}</span>
+                    </div>
+                    <div class="people__list">
+                        {% for obj in theme.collection_objects %}
+                        <span class="person {% if obj.is_completed %}is-done{% else %}is-pending{% endif %}" title="{{ obj.name }} · {% if obj.is_completed %}已提交{% else %}待提交{% endif %}">
+                            <span class="person__avatar">{{ obj.name[:1] }}</span>
+                            <span class="person__name">{{ obj.name }}</span>
+                            <i class="person__icon fas {% if obj.is_completed %}fa-check{% else %}fa-hourglass-half{% endif %}"></i>
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <div class="theme-card__progress">
                     <div class="progress">
                         <div class="progress__fill {% if t_pct >= 100 %}is-full{% elif t_pct >= 50 %}is-mid{% else %}is-low{% endif %}" style="width:{{ t_pct }}%;"></div>
                     </div>
-                </div>
-                <div class="theme-card__foot">
-                    <span class="badge badge--success"><i class="fas fa-check-circle"></i> {{ t_done }} 已完成</span>
-                    <span class="tag"><i class="fas fa-users"></i> 共 {{ t_total }} 人</span>
                 </div>
             </a>
             {% endfor %}

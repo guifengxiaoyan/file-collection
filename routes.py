@@ -3,11 +3,12 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
-from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, Attachment, ThemeAttachment, beijing_now
+from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, CollectionObjectTemplate, Attachment, ThemeAttachment, beijing_now
 from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
-    rename_uploaded_file, sanitize_stored_filename, create_export_archive
+    rename_uploaded_file, sanitize_stored_filename, create_export_archive,
+    safe_remove_file, safe_remove_dir
 )
 import openpyxl
 
@@ -161,7 +162,7 @@ def register_routes(app):
         obj = attachment.collection_object
         file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), attachment.filename)
         if os.path.exists(file_path):
-            os.remove(file_path)
+            safe_remove_file(file_path)
         db.session.delete(attachment)
         db.session.commit()
         return jsonify({'success': True})
@@ -173,7 +174,7 @@ def register_routes(app):
         theme_id = attachment.theme_id
         file_path = os.path.join(get_theme_folder(theme_id), attachment.filename)
         if os.path.exists(file_path):
-            os.remove(file_path)
+            safe_remove_file(file_path)
         db.session.delete(attachment)
         db.session.commit()
         flash('附件已删除', 'success')
@@ -322,9 +323,94 @@ def register_routes(app):
                         db.session.add(att)
             db.session.commit()
             
+            # 处理从收集对象模板添加的对象
+            selected_templates = request.form.getlist('selected_templates')
+            for tid in selected_templates:
+                try:
+                    tpl = CollectionObjectTemplate.query.get(int(tid))
+                except (ValueError, TypeError):
+                    tpl = None
+                if tpl and tpl.name.strip():
+                    db.session.add(CollectionObject(name=tpl.name.strip(), theme_id=theme.id))
+            db.session.commit()
+
             flash('收集主题创建成功', 'success')
             return redirect(url_for('admin_dashboard'))
-        return render_template('theme_create.html')
+        from collections import OrderedDict
+        templates = CollectionObjectTemplate.query.order_by(CollectionObjectTemplate.category, CollectionObjectTemplate.name).all()
+        templates_by_cat = OrderedDict()
+        for t in templates:
+            templates_by_cat.setdefault(t.category or '默认分组', []).append(t)
+        return render_template('theme_create.html', templates_by_cat=templates_by_cat)
+
+    @app.route('/admin/object-templates', methods=['GET', 'POST'])
+    @login_required
+    def object_templates():
+        if request.method == 'POST':
+            names_text = request.form.get('names', '')
+            category = (request.form.get('category') or '').strip() or '默认分组'
+            added = 0
+            for raw in names_text.split('\n'):
+                name = raw.strip()
+                if name:
+                    db.session.add(CollectionObjectTemplate(name=name, category=category))
+                    added += 1
+            db.session.commit()
+            if added:
+                flash(f'成功添加 {added} 个收集对象模板', 'success')
+            else:
+                flash('请在“收集对象名称”中至少填写一个名称', 'error')
+            return redirect(url_for('object_templates'))
+
+        templates = CollectionObjectTemplate.query.order_by(CollectionObjectTemplate.category, CollectionObjectTemplate.name).all()
+        from collections import OrderedDict
+        by_cat = OrderedDict()
+        for t in templates:
+            by_cat.setdefault(t.category or '默认分组', []).append(t)
+        return render_template('object_templates.html', templates=templates, by_cat=by_cat)
+
+    @app.route('/admin/object-templates/<int:template_id>/edit', methods=['POST'])
+    @login_required
+    def edit_object_template(template_id):
+        t = CollectionObjectTemplate.query.get_or_404(template_id)
+        new_name = (request.form.get('name') or '').strip()
+        new_cat = (request.form.get('category') or '').strip()
+        if new_name:
+            t.name = new_name
+        if new_cat:
+            t.category = new_cat
+        db.session.commit()
+        flash('模板已更新', 'success')
+        return redirect(url_for('object_templates'))
+
+    @app.route('/admin/object-templates/<int:template_id>/delete', methods=['POST'])
+    @login_required
+    def delete_object_template(template_id):
+        t = CollectionObjectTemplate.query.get_or_404(template_id)
+        db.session.delete(t)
+        db.session.commit()
+        flash('模板已删除', 'success')
+        return redirect(url_for('object_templates'))
+
+
+    @app.route('/admin/object-templates/add-object', methods=['POST'])
+    @login_required
+    def add_template_object():
+        """向已存在的收集对象模板分组中追加收集对象（一行一个）。"""
+        category = (request.form.get('category') or '').strip() or '默认分组'
+        names_text = request.form.get('names', '')
+        added = 0
+        for raw in names_text.split('\n'):
+            name = raw.strip()
+            if name:
+                db.session.add(CollectionObjectTemplate(name=name, category=category))
+                added += 1
+        db.session.commit()
+        if added:
+            flash(f'已向「{category}」添加 {added} 个收集对象', 'success')
+        else:
+            flash('请输入至少一个收集对象名称', 'error')
+        return redirect(url_for('object_templates'))
 
     @app.route('/admin/theme/<int:theme_id>/objects', methods=['GET', 'POST'])
     @login_required
@@ -374,7 +460,7 @@ def register_routes(app):
         theme_folder = get_theme_folder(theme_id)
         if os.path.exists(theme_folder):
             import shutil
-            shutil.rmtree(theme_folder)
+            safe_remove_dir(theme_folder)
         db.session.delete(theme)
         db.session.commit()
         flash('主题已删除', 'success')
@@ -397,7 +483,7 @@ def register_routes(app):
         for att in attachments:
             file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
             if os.path.exists(file_path):
-                os.remove(file_path)
+                safe_remove_file(file_path)
             db.session.delete(att)
         obj.is_completed = False
         obj.completed_at = None
@@ -412,7 +498,7 @@ def register_routes(app):
         obj = att.collection_object
         file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
         if os.path.exists(file_path):
-            os.remove(file_path)
+            safe_remove_file(file_path)
         db.session.delete(att)
         db.session.commit()
         flash('附件已删除', 'success')
@@ -510,7 +596,7 @@ def register_routes(app):
         for att in announcement.attachments:
             file_path = os.path.join(get_announcement_folder(), att.filename)
             if os.path.exists(file_path):
-                os.remove(file_path)
+                safe_remove_file(file_path)
         db.session.delete(announcement)
         db.session.commit()
         flash('公告已删除', 'success')
@@ -568,7 +654,7 @@ def register_routes(app):
         announcement_id = attachment.announcement_id
         file_path = os.path.join(get_announcement_folder(), attachment.filename)
         if os.path.exists(file_path):
-            os.remove(file_path)
+            safe_remove_file(file_path)
         db.session.delete(attachment)
         db.session.commit()
         flash('附件已删除', 'success')

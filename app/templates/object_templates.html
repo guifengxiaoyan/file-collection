@@ -1,0 +1,107 @@
+{% extends "admin_base.html" %}
+
+{% block sidebar %}
+<aside class="admin__sidebar">
+    <div class="admin__brand"><i class="fas fa-cog"></i> 管理后台</div>
+    <nav class="admin__nav">
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+        <a class="admin__navlink admin__navlink--active" href="{{ url_for('object_templates') }}"><i class="fas fa-clipboard-list"></i> 收集对象模板</a>
+    </nav>
+    <div class="admin__navsep"></div>
+    <div class="admin__navfoot">
+        <a class="admin__navlink" href="{{ url_for('change_password') }}"><i class="fas fa-key"></i> 修改密码</a>
+        <a class="admin__navlink" href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block admin_content %}
+<div class="form-page">
+    <div class="form-card">
+        <h2><i class="fas fa-plus-circle"></i> 新建收集对象模板</h2>
+        <p class="form__hint"><i class="fas fa-info-circle"></i> 一个模板 = 一个<b>分组名称</b>（模板名，如“临床科室”） + 其下的多个<b>收集对象</b>（如 张三 / 李四）。<b>上框填分组名，下框每行填一个对象名</b>，二者不要填成同一个。</p>
+        <form method="POST" action="{{ url_for('object_templates') }}">
+            <div class="form__group">
+                <label class="form__label" for="tpl-category"><i class="fas fa-tags"></i> ① 分组名称（模板名，选填）</label>
+                <input type="text" id="tpl-category" name="category" placeholder="如：研发部 / 财务部 / 临床科室（留空归入默认分组）">
+            </div>
+            <div class="form__group">
+                <label class="form__label" for="tpl-names"><i class="fas fa-users"></i> ② 收集对象名称（一行一个，必填）</label>
+                <textarea id="tpl-names" name="names" rows="6" placeholder="张三&#10;李四&#10;王五"></textarea>
+            </div>
+            <div class="tpl-preview" id="tpl-preview"></div>
+            <div class="form__actions">
+                <button type="submit" class="btn btn--success"><i class="fas fa-plus"></i> 添加模板</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="form-card">
+        <h2><i class="fas fa-clipboard-list"></i> 模板列表</h2>
+        {% if by_cat %}
+            {% for cat, items in by_cat.items() %}
+            <div class="tpl-block">
+                <div class="tpl-block__title"><i class="fas fa-folder"></i> {{ cat }} <span class="tpl-block__count">{{ items|length }}</span></div>
+                <div class="tpl-rows">
+                    {% for t in items %}
+                    <div class="tpl-row">
+                        <span class="tpl-row__cat-tag" title="所属分组">{{ t.category or '默认分组' }}</span>
+                        <form method="POST" action="{{ url_for('edit_object_template', template_id=t.id) }}" class="tpl-row__edit">
+                            <input type="text" name="name" value="{{ t.name }}" class="tpl-row__name" aria-label="对象名称">
+                            <button type="submit" class="btn btn--ghost btn--sm" title="保存修改"><i class="fas fa-check"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('delete_object_template', template_id=t.id) }}" onsubmit="return confirm('确定删除该对象？')">
+                            <button type="submit" class="btn btn--danger btn--sm" title="删除"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                <form method="POST" action="{{ url_for('add_template_object') }}" class="tpl-add">
+                    <input type="hidden" name="category" value="{{ cat }}">
+                    <textarea name="names" rows="2" class="tpl-add__input" placeholder="向「{{ cat }}」增加收集对象，一行一个"></textarea>
+                    <button type="submit" class="btn btn--primary btn--sm"><i class="fas fa-plus"></i> 增加收集对象</button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-hint"><i class="fas fa-inbox"></i> 还没有任何模板，在左侧表单中创建第一个吧。</div>
+        {% endif %}
+        <div class="form__hint" style="margin-top:14px;">
+            <i class="fas fa-lightbulb"></i> 提示：创建收集主题时，在"从对象模板快速添加"区域勾选模板即可自动加入收集对象。
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var cat = document.getElementById('tpl-category');
+    var names = document.getElementById('tpl-names');
+    var prev = document.getElementById('tpl-preview');
+    if (!cat || !names || !prev) return;
+    function escapeHtml(s) {
+        return s.replace(/[&<>"]/g, function (m) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m];
+        });
+    }
+    function update() {
+        var c = (cat.value || '').trim() || '默认分组';
+        var list = names.value.split('\n').map(function (s) { return s.trim(); })
+            .filter(function (s) { return s.length > 0; });
+        var html = '将创建分组「<b>' + escapeHtml(c) + '</b>」，包含 <b>' + list.length + '</b> 个对象：';
+        if (list.length) {
+            html += list.map(function (o) {
+                return '<span class="tpl-preview__item">' + escapeHtml(o) + '</span>';
+            }).join('');
+        } else {
+            html += '<span class="tpl-preview__empty">（请在下方填写至少一个对象名）</span>';
+        }
+        prev.innerHTML = html;
+    }
+    cat.addEventListener('input', update);
+    names.addEventListener('input', update);
+    update();
+})();
+</script>
+{% endblock %}
