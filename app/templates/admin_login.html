@@ -7,14 +7,6 @@
         <h1 class="auth__title">管理员登录</h1>
         <p class="auth__subtitle">文件收集系统 · 后台管理</p>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, msg in messages %}
-                <div class="flash flash--{{ category }}">{{ msg }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <form method="POST" action="{{ url_for('admin_login') }}">
             <div class="form__group">
                 <label class="form__label" for="username"><i class="fas fa-user"></i> 用户名</label>
@@ -24,8 +16,8 @@
                 <label class="form__label" for="password"><i class="fas fa-lock"></i> 密码</label>
                 <input type="password" id="password" name="password" required placeholder="输入密码" autocomplete="current-password">
             </div>
-            <button type="submit" class="btn btn--primary" style="width: 100%; justify-content: center;">
-                <i class="fas fa-sign-in-alt"></i> 登录
+            <button type="submit" class="btn btn--primary" style="width: 100%; justify-content: center; padding: 13px 16px; font-size: 15px;">
+                <i class="fas fa-sign-in-alt"></i> <span class="z">登录</span>
             </button>
         </form>
 

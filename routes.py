@@ -586,7 +586,7 @@ def register_routes(app):
             
             db.session.commit()
             flash('公告创建成功', 'success')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('admin_dashboard', tab='announcements'))
         return render_template('announcement_create.html')
 
     @app.route('/admin/announcement/<int:announcement_id>/delete', methods=['POST'])
@@ -600,7 +600,7 @@ def register_routes(app):
         db.session.delete(announcement)
         db.session.commit()
         flash('公告已删除', 'success')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('admin_dashboard', tab='announcements'))
 
     @app.route('/admin/announcement/<int:announcement_id>/edit', methods=['GET', 'POST'])
     @login_required
@@ -644,7 +644,7 @@ def register_routes(app):
                         db.session.add(att)
             db.session.commit()
             flash('公告已更新', 'success')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('admin_dashboard', tab='announcements'))
         return render_template('announcement_edit.html', announcement=announcement)
 
     @app.route('/admin/announcement/attachment/<int:attachment_id>/delete', methods=['GET', 'POST'])

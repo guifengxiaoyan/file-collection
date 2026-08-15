@@ -13,12 +13,16 @@
     <!-- Hero -->
     <section class="hero">
         <div class="hero__body">
+            <div class="hero__chips">
+                <span class="hero__chip hero__chip--live"><i class="fas fa-circle"></i> 系统在线</span>
+                <span class="hero__chip"><i class="fas fa-shield-alt"></i> 数据加密传输</span>
+            </div>
             <h1 class="hero__title">统一收集，<span>高效管理</span>每一份资料</h1>
             <p class="hero__sub">面向团队的文件收集平台：创建收集主题、分发至成员、实时追踪上传进度，所有附件安全归档。</p>
             <div class="hero__stats">
-                <div class="hero__stat"><b>{{ themes|length }}</b><span>进行中主题</span></div>
-                <div class="hero__stat"><b>{{ total_objects }}</b><span>收集对象</span></div>
-                <div class="hero__stat"><b>{{ done_objects }}</b><span>已完成提交</span></div>
+                <div class="hero__stat"><b class="count-up" data-target="{{ themes|length }}">{{ themes|length }}</b><span><i class="fas fa-folder-open"></i> 进行中主题</span></div>
+                <div class="hero__stat"><b class="count-up" data-target="{{ total_objects }}">{{ total_objects }}</b><span><i class="fas fa-users"></i> 收集对象</span></div>
+                <div class="hero__stat"><b class="count-up" data-target="{{ done_objects }}">{{ done_objects }}</b><span><i class="fas fa-check-circle"></i> 已完成提交</span></div>
             </div>
         </div>
         <aside class="hero__aside">

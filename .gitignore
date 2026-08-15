@@ -8,3 +8,6 @@ __pycache__/
 *.pyo
 *.bak
 export_temp*/
+
+# 运行时数据
+uploads/
