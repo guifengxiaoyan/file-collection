@@ -1,7 +1,9 @@
 import os
 import io
+import re
 import shutil
 import uuid
+import zipfile
 from copy import copy
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -10,6 +12,13 @@ from config import Config
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
+
+# WPS「单元格内嵌图片」(以 DISPIMG 公式锚定在单元格中的截图) 相关声明。
+# openpyxl 无法识别这类图片（ws._images 为空），保存时会把整张图片存储丢弃，
+# 因此合并后必须手动把图片字节与声明重新注入结果文件，否则截图会丢失。
+WPS_CELLIMAGE_NS = 'http://www.wps.cn/officeDocument/2017/etCustomData'
+CELLIMAGE_REL_TYPE = 'http://www.wps.cn/officeDocument/2020/cellImage'
+CELLIMAGE_CONTENT_TYPE = 'application/vnd.wps-officedocument.cellimage+xml'
 
 def safe_remove_file(path):
     """安全删除文件。
@@ -123,6 +132,159 @@ def _place_image_to_cell(out_ws, img, out_row, out_col, occupied):
     return True
 
 
+def _collect_wps_cell_images(path):
+    """读取 WPS「单元格内嵌图片」(xl/cellimages.xml + xl/media)。
+
+    这类截图以 DISPIMG 公式锚定在单元格中（例如 =_xlfn.DISPIMG("ID_xxx",1)），
+    openpyxl 无法识别（ws._images 为空），保存时会把整张图片存储丢弃，导致合并后
+    截图丢失。这里从原始 zip 中解析出每张图片的字节与 pic 定义，供后续重新注入
+    到合并结果中。
+
+    返回 [{ 'name': <图片ID>, 'media': <bytes>, 'ext': '.png', 'pic': <etc:cellImage xml> }, ...]
+    （按图片 id 去重）
+    """
+    try:
+        z = zipfile.ZipFile(path)
+    except Exception:
+        return []
+    names = set(z.namelist())
+    if 'xl/cellimages.xml' not in names:
+        return []
+
+    try:
+        cellimages = z.read('xl/cellimages.xml').decode('utf-8')
+        rels = z.read('xl/_rels/cellimages.xml.rels').decode('utf-8')
+    except Exception:
+        return []
+
+    # rId -> 相对 xl/ 的 media 路径
+    rid_target = {}
+    for m in re.finditer(r'Id="(rId\d+)"[^>]*?Target="([^"]+)"', rels):
+        rid_target[m.group(1)] = m.group(2)
+
+    out = []
+    seen = set()
+    for block in re.findall(r'<etc:cellImage>.*?</etc:cellImage>', cellimages, re.S):
+        nm = re.search(r'<xdr:cNvPr[^>]*?\bname="([^"]+)"', block)
+        blip = re.search(r'<a:blip[^>]*?r:embed="([^"]+)"', block)
+        if not nm or not blip:
+            continue
+        name = nm.group(1)
+        if name in seen:
+            continue
+        target = rid_target.get(blip.group(1))
+        if not target:
+            continue
+        media_path = target if target.startswith('xl/') else 'xl/' + target
+        if media_path not in names:
+            continue
+        media = z.read(media_path)
+        ext = os.path.splitext(target)[1].lower() or '.png'
+        out.append({'name': name, 'media': media, 'ext': ext, 'pic': block})
+        seen.add(name)
+    return out
+
+
+def _inject_wps_cell_images(buf, images):
+    """把 WPS 单元格内嵌图片重新写入已保存的 xlsx 字节流。
+
+    openpyxl 保存时会丢弃 xl/cellimages.xml 与 xl/media/，这里在保存后的 zip 中
+    重新注入媒体文件、cellimages.xml 及其关系，并补全 [Content_Types].xml 与
+    workbook.xml.rels 的声明，使 DISPIMG 公式能继续解析出截图。
+
+    返回新的 BytesIO（若 images 为空则原样返回 buf）。
+    """
+    if not images:
+        return buf
+
+    zin = zipfile.ZipFile(buf)
+    entries = {item.filename: zin.read(item.filename) for item in zin.infolist()}
+    zin.close()
+
+    # 1) 媒体文件（唯一文件名避免不同文件同名冲突）
+    for i, img in enumerate(images, 1):
+        entries[f'xl/media/merged_img_{i}{img["ext"]}'] = img['media']
+
+    # 2) cellimages.xml：聚合所有 pic，重写 r:embed 指向新的 rId
+    cellimage_parts = []
+    rels_items = []
+    for i, img in enumerate(images, 1):
+        rid = f'rIdImg{i}'
+        # 仅替换第一个 r:embed（每个 pic 只有一个 blip）
+        pic = re.sub(
+            r'(<a:blip[^>]*?r:embed=")[^"]+(")',
+            lambda m, r=rid: m.group(1) + r + m.group(2),
+            img['pic'], count=1,
+        )
+        cellimage_parts.append(pic)
+        rels_items.append(
+            f'<Relationship Id="{rid}" '
+            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+            f'Target="media/merged_img_{i}{img["ext"]}"/>'
+        )
+
+    cellimages_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<etc:cellImages '
+        'xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        f'xmlns:etc="{WPS_CELLIMAGE_NS}">'
+        + ''.join(cellimage_parts) +
+        '</etc:cellImages>'
+    )
+    entries['xl/cellimages.xml'] = cellimages_xml.encode('utf-8')
+    entries['xl/_rels/cellimages.xml.rels'] = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + ''.join(rels_items) +
+        '</Relationships>'
+    ).encode('utf-8')
+
+    # 3) [Content_Types].xml：确保图片扩展名默认类型 + cellimages override
+    ct = entries['[Content_Types].xml'].decode('utf-8')
+    exts_used = {img['ext'].lstrip('.') for img in images}
+    for ext in exts_used:
+        if f'Extension="{ext}"' not in ct:
+            ct = ct.replace(
+                '</Types>',
+                f'<Default Extension="{ext}" ContentType="image/{ext}"/></Types>',
+            )
+    if '/xl/cellimages.xml' not in ct:
+        ct = ct.replace(
+            '</Types>',
+            '<Override PartName="/xl/cellimages.xml" '
+            f'ContentType="{CELLIMAGE_CONTENT_TYPE}"/></Types>',
+        )
+    entries['[Content_Types].xml'] = ct.encode('utf-8')
+
+    # 4) workbook.xml.rels：增加 cellimages 关系（Id 不冲突）
+    wrels_name = 'xl/_rels/workbook.xml.rels'
+    wrels = entries[wrels_name].decode('utf-8')
+    if 'cellimages.xml' not in wrels:
+        ids = set(re.findall(r'Id="([^"]+)"', wrels))
+        rid_cell = 'rIdCellImages'
+        n = 1
+        while rid_cell in ids:
+            rid_cell = f'rIdCellImages{n}'
+            n += 1
+        wrels = wrels.replace(
+            '</Relationships>',
+            f'<Relationship Id="{rid_cell}" Type="{CELLIMAGE_REL_TYPE}" '
+            'Target="cellimages.xml"/></Relationships>',
+        )
+        entries[wrels_name] = wrels.encode('utf-8')
+
+    # 重新打包
+    out = io.BytesIO()
+    zout = zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED)
+    for name, data in entries.items():
+        zout.writestr(name, data)
+    zout.close()
+    out.seek(0)
+    return out
+
+
 def detect_excel_merge_ready(theme_id):
     """检测某个主题下的全部附件是否满足 Excel 合并条件。
 
@@ -211,12 +373,20 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
       - 逐行（按行合并）把所有文件的数据行堆叠到一起；
       - merge_identical=True 时，跨所有文件删除“数据列完全相同”的重复行（去重合并）；
       - mark_source=True 时，在末尾新增“收集对象”列标注来源；
-      - 单元格中的截图（图片）会被“固定”到原所在单元格，绝不会因合并而丢失或重合。
+      - 单元格中的截图（含 WPS 以 DISPIMG 公式锚定的“单元格内嵌图片”）会被“固定”
+        到原所在单元格，绝不会因合并而丢失或重合。
 
     返回 io.BytesIO（xlsx 字节流），无数据则返回 None。
     """
     if not files:
         return None
+
+    # 预收集所有 WPS 单元格内嵌图片（openpyxl 保存时会丢弃，需事后重新注入）
+    wps_images = []
+    for f in files:
+        for img in _collect_wps_cell_images(f['path']):
+            if not any(i['name'] == img['name'] for i in wps_images):
+                wps_images.append(img)
 
     # 以第一个文件为模板：表头、列数、工作表名
     first_wb = openpyxl.load_workbook(files[0]['path'])
@@ -300,6 +470,9 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     buf = io.BytesIO()
     out_wb.save(buf)
     buf.seek(0)
+
+    # 把 WPS 单元格内嵌图片（DISPIMG 截图）重新注入结果，避免合并后截图丢失/重叠
+    buf = _inject_wps_cell_images(buf, wps_images)
     return buf
 
 
