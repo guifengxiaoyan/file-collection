@@ -8,7 +8,7 @@ from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
     rename_uploaded_file, sanitize_stored_filename, create_export_archive,
-    safe_remove_file, safe_remove_dir
+    safe_remove_file, safe_remove_dir, detect_excel_merge_ready, merge_excel_files
 )
 import openpyxl
 
@@ -540,6 +540,44 @@ def register_routes(app):
         archive_name = create_export_archive(theme_id, theme.title)
         archive_path = os.path.join(get_theme_folder(theme_id), archive_name)
         return send_file(archive_path, as_attachment=True)
+
+    @app.route('/admin/theme/<int:theme_id>/merge-excel', methods=['GET', 'POST'])
+    @login_required
+    def merge_excel(theme_id):
+        """Excel 合并：当主题下所有附件都是 Excel 且格式一致时，可合并为一个表格。"""
+        theme = CollectionTheme.query.get_or_404(theme_id)
+        status = detect_excel_merge_ready(theme_id)
+
+        if request.method == 'POST':
+            if not status['ready']:
+                flash('当前主题不满足合并条件：' + status['reason'], 'error')
+                return redirect(url_for('merge_excel', theme_id=theme_id))
+
+            merge_identical = request.form.get('merge_identical') == 'on'
+            mark_source = request.form.get('mark_source') == 'on'
+
+            files = [{
+                'path': f['path'],
+                'object_name': f['object_name'],
+                'original_name': f['original_name'],
+            } for f in status['files']]
+
+            buf = merge_excel_files(files, merge_identical=merge_identical, mark_source=mark_source)
+            if not buf:
+                flash('合并失败：没有可用的 Excel 数据', 'error')
+                return redirect(url_for('merge_excel', theme_id=theme_id))
+
+            from urllib.parse import quote
+            download_name = f"{theme.title}_合并表格.xlsx"
+            # 用 quote 处理中文文件名，保证各浏览器下载文件名正确
+            return send_file(
+                buf,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+
+        return render_template('excel_merge.html', theme=theme, status=status)
 
     @app.route('/admin/announcement/create', methods=['GET', 'POST'])
     @login_required

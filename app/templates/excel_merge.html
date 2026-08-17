@@ -1,0 +1,105 @@
+{% extends "admin_base.html" %}
+
+{% block sidebar %}
+<aside class="admin__sidebar">
+    <div class="admin__brand"><i class="fas fa-cog"></i> 管理后台</div>
+    <nav class="admin__nav">
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=overview"><i class="fas fa-chart-bar"></i> 概览</a>
+        <a class="admin__navlink" href="{{ url_for('admin_dashboard') }}?tab=announcements"><i class="fas fa-bullhorn"></i> 公告管理</a>
+        <a class="admin__navlink admin__navlink--active" href="{{ url_for('admin_dashboard') }}?tab=themes"><i class="fas fa-folder-open"></i> 主题管理</a>
+    </nav>
+    <div class="admin__navsep"></div>
+    <div class="admin__navfoot">
+        <a class="admin__navlink" href="{{ url_for('change_password') }}"><i class="fas fa-key"></i> 修改密码</a>
+        <a class="admin__navlink" href="{{ url_for('admin_logout') }}"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+    </div>
+</aside>
+{% endblock %}
+
+{% block admin_content %}
+<style>
+.merge-table { width: 100%; border-collapse: collapse; margin: 16px 0; background: rgba(255,255,255,.03); border-radius: 12px; overflow: hidden; }
+.merge-table th, .merge-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+.merge-table th { background: rgba(125,155,255,.12); color: #c7d2ff; font-weight: 600; }
+.merge-table tbody tr:hover { background: rgba(125,155,255,.06); }
+.merge-options { margin-top: 20px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 20px 22px; }
+.merge-options h4 { margin: 0 0 14px; color: #e7ecff; font-size: 16px; }
+.merge-opt { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; cursor: pointer; color: #cdd6f4; }
+.merge-opt input { margin-top: 4px; width: 18px; height: 18px; accent-color: #7d9bff; }
+.merge-note { margin: 16px 0 4px; color: #9aa6c7; font-size: 13px; line-height: 1.6; }
+.merge-note i { color: #7d9bff; margin-right: 6px; }
+</style>
+<div class="admin__topbar">
+    <h1><i class="fas fa-table"></i> 合并 Excel 表格</h1>
+    <div class="admin__topbar-actions">
+        <span class="badge badge--active"><i class="fas fa-folder"></i> {{ theme.title }}</span>
+    </div>
+</div>
+
+<section class="section">
+    <div class="section__head">
+        <div>
+            <h2 class="section__title"><i class="fas fa-object-group"></i> 合并条件检测</h2>
+            <p class="section__sub">只有当所有收集对象上传的附件都是 Excel 文件且格式（列数）一致时，才能执行合并</p>
+        </div>
+    </div>
+
+    {% if status.ready %}
+    <div class="alert alert--success">
+        <i class="fas fa-check-circle"></i>
+        检测通过：共 {{ status.files|length }} 个 Excel 文件，列数均为 {{ status.columns }} 列，可以合并。
+    </div>
+
+    <div class="merge-files">
+        <table class="merge-table">
+            <thead>
+                <tr><th>收集对象</th><th>文件名</th><th>列数</th><th>行数</th></tr>
+            </thead>
+            <tbody>
+            {% for f in status.files %}
+                <tr>
+                    <td>{{ f.object_name }}</td>
+                    <td>{{ f.original_name }}</td>
+                    <td>{{ f.columns }}</td>
+                    <td>{{ f.rows }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <form method="POST" class="merge-options">
+        <h4><i class="fas fa-sliders-h"></i> 合并选项</h4>
+
+        <label class="merge-opt">
+            <input type="checkbox" name="merge_identical">
+            <span><strong>合并相同的行</strong>（跨所有文件删除数据完全相同的重复行）</span>
+        </label>
+
+        <label class="merge-opt">
+            <input type="checkbox" name="mark_source">
+            <span><strong>标记来源</strong>（在末尾新增“收集对象”列，标注每行来自哪个对象）</span>
+        </label>
+
+        <p class="merge-note">
+            <i class="fas fa-info-circle"></i>
+            合并以“按行堆叠”方式进行，单元格中的截图会被固定到原所在位置，绝不会因合并而丢失或重合。
+        </p>
+
+        <div class="page-actions">
+            <button type="submit" class="btn btn--primary"><i class="fas fa-magic"></i> 执行合并并下载</button>
+            <a href="{{ url_for('manage_theme_objects', theme_id=theme.id) }}" class="btn btn--secondary"><i class="fas fa-arrow-left"></i> 返回对象管理</a>
+        </div>
+    </form>
+
+    {% else %}
+    <div class="alert alert--error">
+        <i class="fas fa-exclamation-circle"></i>
+        暂不能合并：{{ status.reason }}
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('manage_theme_objects', theme_id=theme.id) }}" class="btn btn--secondary"><i class="fas fa-arrow-left"></i> 返回对象管理</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
