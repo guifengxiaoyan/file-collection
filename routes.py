@@ -538,6 +538,9 @@ def register_routes(app):
     def export_theme_attachments(theme_id):
         theme = CollectionTheme.query.get_or_404(theme_id)
         archive_name = create_export_archive(theme_id, theme.title)
+        if not archive_name:
+            flash('导出附件失败，请稍后重试', 'error')
+            return redirect(url_for('manage_theme_objects', theme_id=theme_id))
         archive_path = os.path.join(get_theme_folder(theme_id), archive_name)
         return send_file(archive_path, as_attachment=True)
 

@@ -476,38 +476,83 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     return buf
 
 
+def _safe_fs_name(name, max_len=80):
+    """把任意字符串变成安全的文件名片段：去除操作系统非法字符、压缩空白、限制长度。
+
+    对象名/主题名由用户填写，可能含 \\ / : * ? " < > | 或过长路径，直接拼进路径会让
+    shutil.copy2 / make_archive 抛 OSError 导致导出 500。这里统一清洗。
+    """
+    if not name:
+        return '未命名'
+    # 去掉 Windows/Unix 文件名非法字符
+    name = re.sub(r'[\\/:*?"<>|\r\n\t]', '_', name)
+    # 压缩连续空白并去掉首尾空白
+    name = re.sub(r'\s+', '_', name.strip())
+    # 去掉首尾的点/下划线（避免以 . 结尾或为空）
+    name = name.strip('. ').strip('_')
+    if not name:
+        name = '未命名'
+    # 限制长度，避免超长路径
+    if len(name) > max_len:
+        name = name[:max_len].rstrip('. ')
+    return name or '未命名'
+
+
 def create_export_archive(theme_id, theme_title):
-    theme_folder = get_theme_folder(theme_id)
-    # 每次使用唯一临时目录，避免并发/重复导出互相干扰，也避免共享 export_temp 被 safe-delete 拦截导致 500
-    export_folder = os.path.join(theme_folder, 'export_temp_' + uuid.uuid4().hex)
-    os.makedirs(export_folder)
-    
+    """把主题下所有对象的全部附件汇总打包成一个 zip 并返回文件名（位于主题目录内）。
+
+    健壮性要点：
+    - 每个附件的目标文件名全局唯一，绝不会因对象同名而互相覆盖 → 保证“全部”导出；
+    - 主题名/对象名先过 _safe_fs_name，避免非法字符导致 500；
+    - 归档名带 uuid，旧归档先清理，避免 make_archive 抛 FileExistsError；
+    - 整段异常保护 + finally 必清临时目录，任何失败返回 None（由路由兜底提示）。
+    """
+    import glob
     from models import CollectionObject, Attachment
-    objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
-    
-    for obj in objects:
-        attachments = Attachment.query.filter_by(collection_object_id=obj.id).all()
-        if len(attachments) == 1:
-            att = attachments[0]
-            src = os.path.join(theme_folder, f'object_{obj.id}', att.filename)
-            _, ext = os.path.splitext(att.original_name)
-            dst = os.path.join(export_folder, f"{obj.name}{ext}")
-            if os.path.exists(src):
-                shutil.copy2(src, dst)
-        else:
+    theme_folder = get_theme_folder(theme_id)
+    # 每次使用唯一临时目录，避免并发/重复导出互相干扰
+    export_folder = os.path.join(theme_folder, 'export_temp_' + uuid.uuid4().hex)
+    try:
+        os.makedirs(export_folder)
+    except OSError:
+        return None
+
+    try:
+        objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
+        used_names = set()
+        for obj in objects:
+            safe_obj = _safe_fs_name(obj.name)
+            attachments = Attachment.query.filter_by(collection_object_id=obj.id).all()
             for idx, att in enumerate(attachments, 1):
                 src = os.path.join(theme_folder, f'object_{obj.id}', att.filename)
+                if not os.path.exists(src):
+                    continue
                 _, ext = os.path.splitext(att.original_name)
-                dst = os.path.join(export_folder, f"{obj.name}_{idx}{ext}")
-                if os.path.exists(src):
-                    shutil.copy2(src, dst)
+                if not ext:
+                    _, ext = os.path.splitext(att.filename)
+                # 基础名：单附件直接对象名；多附件加序号便于阅读
+                base = safe_obj if len(attachments) == 1 else f"{safe_obj}_{idx}"
+                dst_name = base + ext
+                # 全局去重：同名则追加计数，保证每个附件都有独立条目，互不覆盖
+                n = 2
+                while dst_name in used_names:
+                    dst_name = f"{base}_{n}{ext}"
+                    n += 1
+                used_names.add(dst_name)
+                shutil.copy2(src, os.path.join(export_folder, dst_name))
 
-    archive_name = f"{theme_title}_附件汇总"
-    archive_path = os.path.join(theme_folder, archive_name)
-    # 同主题多次导出时，先安全删除旧归档，避免 make_archive 在部分 Python 版本抛 FileExistsError
-    safe_remove_file(archive_path + '.zip')
-    shutil.make_archive(archive_path, 'zip', export_folder)
-    # 清理临时目录：用 safe_remove_dir 吞掉沙箱 safe-delete 包装器拦截导致的 OSError
-    safe_remove_dir(export_folder)
-
-    return f"{archive_name}.zip"
+        # 归档名唯一化：主题名清洗 + 8 位 uuid，杜绝与旧归档冲突
+        safe_title = _safe_fs_name(theme_title, max_len=60)
+        archive_base = os.path.join(
+            theme_folder, f"{safe_title}_附件汇总_{uuid.uuid4().hex[:8]}"
+        )
+        # 清理同名历史归档，避免反复导出堆积（best-effort）
+        for old in glob.glob(os.path.join(theme_folder, f"{safe_title}_附件汇总*.zip")):
+            safe_remove_file(old)
+        shutil.make_archive(archive_base, 'zip', export_folder)
+        return os.path.basename(archive_base) + '.zip'
+    except Exception:
+        return None
+    finally:
+        # 无论成功失败都清理临时目录，吞掉沙箱 safe-delete 包装器拦截导致的 OSError
+        safe_remove_dir(export_folder)
