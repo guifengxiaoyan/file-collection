@@ -335,7 +335,7 @@ def register_routes(app):
             db.session.commit()
 
             flash('收集主题创建成功', 'success')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('admin_dashboard', tab='themes'))
         from collections import OrderedDict
         templates = CollectionObjectTemplate.query.order_by(CollectionObjectTemplate.category, CollectionObjectTemplate.name).all()
         templates_by_cat = OrderedDict()
@@ -464,7 +464,7 @@ def register_routes(app):
         db.session.delete(theme)
         db.session.commit()
         flash('主题已删除', 'success')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('admin_dashboard', tab='themes'))
 
     @app.route('/admin/object/<int:object_id>/delete', methods=['POST'])
     @login_required
@@ -733,7 +733,7 @@ def register_routes(app):
             
             db.session.commit()
             flash('主题已更新', 'success')
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('admin_dashboard', tab='themes'))
         return render_template('theme_edit.html', theme=theme)
 
     @app.route('/admin/theme/<int:theme_id>/toggle', methods=['POST'])
@@ -751,7 +751,7 @@ def register_routes(app):
         theme.is_active = False
         db.session.commit()
         flash('主题已归档', 'success')
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('admin_dashboard', tab='themes'))
 
     @app.route('/admin/theme/<int:theme_id>/restore', methods=['POST'])
     @login_required
