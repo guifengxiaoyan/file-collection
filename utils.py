@@ -12,6 +12,9 @@ from config import Config
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.drawing.spreadsheet_drawing import (
+    OneCellAnchor, TwoCellAnchor, AnchorMarker,
+)
 
 # WPS「单元格内嵌图片」(以 DISPIMG 公式锚定在单元格中的截图) 相关声明。
 # openpyxl 无法识别这类图片（ws._images 为空），保存时会把整张图片存储丢弃，
@@ -103,32 +106,74 @@ def _copy_cell_style(src, dst):
     dst.protection = copy(src.protection)
 
 
-def _place_image_to_cell(out_ws, img, out_row, out_col, occupied):
-    """把一张图片重新锚定到输出表的指定单元格，避免与已有图片重合。
+def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
+    """把一张图片「保持原有锚定方式」地平移到输出表 (out_row, out_col)。
 
-    返回 True 表示放置成功，False 表示该位置已占用或图片不可用（已跳过）。
+    关键：整体平移原锚点的行号（delta），并保留锚定类型（随单元格移动 / 随单元格
+    移动并调整大小）、`to` 标记（图片右下角）以及 colOff/rowOff 偏移量。这样
+    无论原图是「未锁定」(浮动) 还是「嵌入/锚定到单元格」，合并后都不会跳到单元格
+    左上角、不会变形、不会因堆叠而重叠/丢失。
+
+    - 源图片若锚定在 (fr.row, fr.col)，平移后锚定行为 (fr.row+delta, out_col-1)；
+      delta = out_row - r（1-based 行相减），保证图片跟随其数据行下沉。
+    - 同一单元格出现多张图片（极端情况）时，整图下移一行避让，绝不丢弃。
+    返回 True/False。
     """
-    key = (out_row, out_col)
-    if key in occupied:
-        # 该单元格已有截图，避免重叠（重合单元格）直接跳过，绝不覆盖
-        return False
     try:
         data = img._data()
     except Exception:
         return False
     if not data:
         return False
-    new_img = XLImage(io.BytesIO(data))
+    try:
+        new_img = XLImage(io.BytesIO(data))
+    except Exception:
+        return False
     if getattr(img, 'width', None):
         new_img.width = img.width
     if getattr(img, 'height', None):
         new_img.height = img.height
+
+    a = img.anchor
+    fr = getattr(a, '_from', None)
+    if fr is None:
+        return False
+
+    new_from = AnchorMarker(
+        col=out_col - 1,
+        row=fr.row + delta,
+        colOff=getattr(fr, 'colOff', 0),
+        rowOff=getattr(fr, 'rowOff', 0),
+    )
+    to = getattr(a, 'to', None)
+    if to is not None:
+        # 保持原图列跨度一致（to.col - from.col），行同步平移 delta
+        col_span = to.col - fr.col
+        new_to = AnchorMarker(
+            col=new_from.col + col_span,
+            row=to.row + delta,
+            colOff=getattr(to, 'colOff', 0),
+            rowOff=getattr(to, 'rowOff', 0),
+        )
+        new_img.anchor = TwoCellAnchor(
+            _from=new_from, to=new_to, editAs=getattr(a, 'editAs', None),
+        )
+    else:
+        new_img.anchor = OneCellAnchor(_from=new_from)
+
+    # 冲突避让：同格多图时整图下移一行（from/to 同步），避免覆盖
+    key = (new_from.row, new_from.col)
+    if key in occupied:
+        new_from.row += 1
+        if isinstance(new_img.anchor, TwoCellAnchor):
+            new_to.row += 1
+        key = (new_from.row, new_from.col)
+    occupied.add(key)
+
     try:
-        anchor = f"{get_column_letter(out_col)}{out_row}"
-        out_ws.add_image(new_img, anchor)
+        out_ws.add_image(new_img)
     except Exception:
         return False
-    occupied.add(key)
     return True
 
 
@@ -373,8 +418,9 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
       - 逐行（按行合并）把所有文件的数据行堆叠到一起；
       - merge_identical=True 时，跨所有文件删除“数据列完全相同”的重复行（去重合并）；
       - mark_source=True 时，在末尾新增“收集对象”列标注来源；
-      - 单元格中的截图（含 WPS 以 DISPIMG 公式锚定的“单元格内嵌图片”）会被“固定”
-        到原所在单元格，绝不会因合并而丢失或重合。
+      - 原文件中的图片（浮动/未锁定、锚定到单元格、随单元格移动并调整大小，以及
+        WPS 以 DISPIMG 公式锚定的“单元格内嵌截图”）在合并后会跟随各自的数据行整体
+        下沉到正确位置：保留锚定类型/尺寸/偏移，跨列与表头图片不丢、同格多图不重叠。
 
     返回 io.BytesIO（xlsx 字节流），无数据则返回 None。
     """
@@ -393,6 +439,7 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     first_ws = first_wb.active
     src_ncols = first_ws.max_column
     header = [first_ws.cell(row=1, column=c).value for c in range(1, src_ncols + 1)]
+    first_wb.close()
 
     out_wb = openpyxl.Workbook()
     out_ws = out_wb.active
@@ -412,17 +459,29 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     last_key = None            # 上一行写入的“数据列”内容，用于去重
     occupied = set()           # 已放置图片的 (行, 列)，避免重合
 
-    for f in files:
+    for fi, f in enumerate(files):
         wb = openpyxl.load_workbook(f['path'])
         ws = wb.active
 
-        # 建立图片映射：以 (0-based 行, 0-based 列) 为键
-        img_map = {}
+        # 预收集本文件所有图片（按锚点 0-based 行/列），合并时整体平移到目标行
+        file_imgs = []
         for img in ws._images:
             fr = getattr(getattr(img, 'anchor', None), '_from', None)
             if fr is not None:
-                img_map[(fr.row, fr.col)] = img
+                file_imgs.append((fr.row, fr.col, img))
 
+        placed_ids = set()  # 已放置的图片 id，避免重复/兜底时二次放置
+
+        # 首文件（fi==0）表头行（第 1 行）的图片单独固定到输出表第 1 行；
+        # 其余文件的表头不并入合并表，其表头图片跳过，避免落到上一个文件的数据区造成重叠。
+        if fi == 0:
+            for (ir, ic, img) in file_imgs:
+                if ir == 0:
+                    if _add_shifted_image(out_ws, img, out_row=1, out_col=ic + 1,
+                                          occupied=occupied, delta=0):
+                        placed_ids.add(id(img))
+
+        block_start = out_row  # 本文件首条数据在输出表的目标行（1-based）
         nrows = ws.max_row
         for r in range(2, nrows + 1):
             row_vals = [ws.cell(row=r, column=c).value for c in range(1, src_ncols + 1)]
@@ -436,11 +495,14 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
 
             if merge_identical and data_key == last_key:
                 # 完全相同的行 -> 合并（去重）：不新增输出行，
-                # 但若被丢弃的行含有截图，需把截图“固定”到保留行对应单元格，避免丢失
+                # 但把被丢弃行的图片“固定”到保留行对应单元格，避免丢失
                 kept_row = out_row - 1
-                for (ir, ic), img in img_map.items():
-                    if ir == r - 1 and ic < src_ncols:
-                        _place_image_to_cell(out_ws, img, kept_row, ic + 1, occupied)
+                for (ir, ic, img) in file_imgs:
+                    if ir == r - 1 and id(img) not in placed_ids:
+                        if _add_shifted_image(out_ws, img, out_row=kept_row,
+                                              out_col=ic + 1, occupied=occupied,
+                                              delta=kept_row - r):
+                            placed_ids.add(id(img))
                 continue
 
             # 写入该行数据（含样式）
@@ -449,13 +511,28 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                 if c <= src_ncols:
                     _copy_cell_style(ws.cell(row=r, column=c), cell)
 
-            # 把原截图表单元格“固定”到输出表的相同位置
-            for (ir, ic), img in img_map.items():
-                if ir == r - 1 and ic < src_ncols:
-                    _place_image_to_cell(out_ws, img, out_row, ic + 1, occupied)
+            # 把本行图片整体平移到输出表对应行：保留锚定类型/尺寸/偏移，
+            # 不丢图、不重叠（delta=out_row-r 使图片严格跟随其数据行下沉）
+            for (ir, ic, img) in file_imgs:
+                if ir == r - 1 and id(img) not in placed_ids:
+                    if _add_shifted_image(out_ws, img, out_row=out_row,
+                                          out_col=ic + 1, occupied=occupied,
+                                          delta=out_row - r):
+                        placed_ids.add(id(img))
 
             last_key = data_key
             out_row += 1
+
+        # 兜底：锚定在「非数据行」（如空白行上的浮动图）的图片，按整块行偏移平移放入，
+        # 否则这类图片因找不到对应数据行会被直接丢弃。
+        for (ir, ic, img) in file_imgs:
+            if id(img) in placed_ids:
+                continue
+            if fi > 0 and ir == 0:
+                continue  # 非首文件表头图片跳过，避免落入上一文件数据区
+            _add_shifted_image(out_ws, img, out_row=ir + block_start - 1,
+                               out_col=ic + 1, occupied=occupied,
+                               delta=block_start - 2)
 
         wb.close()
 
