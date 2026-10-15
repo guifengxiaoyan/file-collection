@@ -13,8 +13,10 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.drawing.spreadsheet_drawing import (
-    OneCellAnchor, TwoCellAnchor, AnchorMarker,
+    OneCellAnchor, TwoCellAnchor, AnchorMarker, XDRPositiveSize2D,
 )
+
+EMU_PER_PX = 9525  # 1 像素 = 9525 EMU（96 DPI）
 
 # WPS「单元格内嵌图片」(以 DISPIMG 公式锚定在单元格中的截图) 相关声明。
 # openpyxl 无法识别这类图片（ws._images 为空），保存时会把整张图片存储丢弃，
@@ -106,6 +108,25 @@ def _copy_cell_style(src, dst):
     dst.protection = copy(src.protection)
 
 
+def _image_ext(src_anchor, w_px, h_px):
+    """构造 OneCellAnchor 的 ext（图片显示尺寸，EMU）。
+
+    优先沿用源锚点已记录的 ext（即原文件里的显示尺寸）；
+    若源锚点没有有效 ext（或为零），则按图片真实像素尺寸换算
+    （1px = 9525 EMU）。返回 XDRPositiveSize2D。
+    """
+    src_ext = getattr(src_anchor, 'ext', None)
+    if src_ext is not None:
+        cx = getattr(src_ext, 'cx', 0) or 0
+        cy = getattr(src_ext, 'cy', 0) or 0
+        if cx > 0 and cy > 0:
+            return XDRPositiveSize2D(cx, cy)
+    if w_px and h_px and w_px > 0 and h_px > 0:
+        return XDRPositiveSize2D(int(round(w_px * EMU_PER_PX)),
+                                 int(round(h_px * EMU_PER_PX)))
+    return XDRPositiveSize2D(0, 0)
+
+
 def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
     """把一张图片「保持原有锚定方式」地平移到输出表 (out_row, out_col)。
 
@@ -139,6 +160,10 @@ def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
     if fr is None:
         return False
 
+    # 图片实际像素尺寸（openpyxl 加载时按图片真实尺寸设置）
+    w_px = getattr(img, 'width', None)
+    h_px = getattr(img, 'height', None)
+
     new_from = AnchorMarker(
         col=out_col - 1,
         row=fr.row + delta,
@@ -149,17 +174,27 @@ def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
     if to is not None:
         # 保持原图列跨度一致（to.col - from.col），行同步平移 delta
         col_span = to.col - fr.col
-        new_to = AnchorMarker(
-            col=new_from.col + col_span,
-            row=to.row + delta,
-            colOff=getattr(to, 'colOff', 0),
-            rowOff=getattr(to, 'rowOff', 0),
-        )
-        new_img.anchor = TwoCellAnchor(
-            _from=new_from, to=new_to, editAs=getattr(a, 'editAs', None),
-        )
+        row_span = to.row - fr.row
+        if col_span == 0 and row_span == 0:
+            # 退化锚点（from==to，零跨度）：尺寸为 0 会导致图片不可见，
+            # 改用 OneCellAnchor + 显式 ext，保证合并后仍然看得见
+            new_img.anchor = OneCellAnchor(
+                _from=new_from, ext=_image_ext(a, w_px, h_px))
+        else:
+            new_to = AnchorMarker(
+                col=new_from.col + col_span,
+                row=to.row + delta,
+                colOff=getattr(to, 'colOff', 0),
+                rowOff=getattr(to, 'rowOff', 0),
+            )
+            new_img.anchor = TwoCellAnchor(
+                _from=new_from, to=new_to, editAs=getattr(a, 'editAs', None),
+            )
     else:
-        new_img.anchor = OneCellAnchor(_from=new_from)
+        # OneCellAnchor：必须显式设置 ext（图片显示尺寸），
+        # 否则默认 (0,0) 会让图片以零尺寸写入、在 Excel/WPS 中完全不可见
+        new_img.anchor = OneCellAnchor(
+            _from=new_from, ext=_image_ext(a, w_px, h_px))
 
     # 冲突避让：同格多图时整图逐行下移，直到找到空位，绝不覆盖
     # （单次 +1 只够 2 张，3 张及以上会重叠，故用循环查找下一个空行）
