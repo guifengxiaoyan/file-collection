@@ -135,6 +135,9 @@ def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
     无论原图是「未锁定」(浮动) 还是「嵌入/锚定到单元格」，合并后都不会跳到单元格
     左上角、不会变形、不会因堆叠而重叠/丢失。
 
+    注：这里只是「平移+避让」；合并末尾的 _fit_images_to_cells 会把所有图片
+    统一改写为覆盖整个单元格的 TwoCellAnchor（嵌入单元格、随单元格缩放）。
+
     - 源图片若锚定在 (fr.row, fr.col)，平移后锚定行为 (fr.row+delta, out_col-1)；
       delta = out_row - r（1-based 行相减），保证图片跟随其数据行下沉。
     - 同一单元格出现多张图片（极端情况）时，整图下移一行避让，绝不丢弃。
@@ -605,9 +608,10 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
         source_col = src_ncols + 1
         out_ws.column_dimensions[get_column_letter(source_col)].width = 18
 
-    # 把每张图片收敛到其锚定单元格内：浮动/未嵌入单元格的图片尺寸由自身决定，
-    # 超出单元格就会压盖相邻单元格里的图片（合并后“图片重叠堆叠”）。
-    # 这里优先扩展行列网格容纳图片（有上限），仍超限则等比缩小，确保互不重叠。
+    # 把每张图片「嵌入单元格」：浮动/未嵌入单元格的图片尺寸由自身决定，超出单元格
+    # 就会压盖相邻单元格里的图片（合并后“图片重叠堆叠”）。这里优先扩展行列网格
+    # 容纳图片（有上限），仍超限则等比缩小，最终统一改写为覆盖整个单元格的
+    # TwoCellAnchor（editAs="twoCell"）——图片填满单元格且随行高列宽一起缩放。
     _fit_images_to_cells(out_ws)
 
     buf = io.BytesIO()
@@ -620,7 +624,7 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
 
 
 def _fit_images_to_cells(out_ws, max_col_px=425, max_row_px=533):
-    """把工作表中所有图片收敛到各自锚定单元格内，避免相互重叠堆叠。
+    """把工作表中所有图片「嵌入单元格」，避免相互重叠且能随单元格缩放。
 
     背景：收集上来的 Excel 里，图片常常是「浮动/未嵌入单元格」的，其显示尺寸
     由图片自身决定，不受单元格约束。按行合并后，图片尺寸超出所在单元格时就会
@@ -630,9 +634,11 @@ def _fit_images_to_cells(out_ws, max_col_px=425, max_row_px=533):
       1. 取图片当前显示尺寸（oneCellAnchor 取 ext；twoCellAnchor 按网格跨度折算）；
       2. 宽度以 max_col_px 为上限、高度以 max_row_px 为上限，超限则等比缩小；
       3. 若行列网格容纳不下，优先扩展该列列宽/该行行高（取两者较大值）；
-      4. 统一改写为 OneCellAnchor + 显式 ext，使图片被“关”在单元格矩形内。
+      4. 统一改写为「覆盖整个单元格」的 TwoCellAnchor（editAs="twoCell"），
+         即把图片嵌入单元格：恰好填满所在单元格，调整行高/列宽时图片随之缩放。
 
-    这样每张图都只占自己单元格的范围，任意两张图都不可能重叠。
+    这样每张图都只占自己单元格的范围，任意两张图都不可能重叠；用户在
+    Excel/WPS 里拖动行高列宽时，图片会跟着一起变大变小。
     """
     def col_w_px(cidx):
         w = out_ws.column_dimensions[get_column_letter(cidx + 1)].width
@@ -702,13 +708,16 @@ def _fit_images_to_cells(out_ws, max_col_px=425, max_row_px=533):
         if not cur or pts > cur:
             out_ws.row_dimensions[ridx + 1].height = round(pts, 2)
 
-    # 4) 统一改写为 OneCellAnchor + 显式 ext，把图片“关”进单元格矩形
+    # 4) 统一改写为「覆盖整个单元格」的 TwoCellAnchor（editAs="twoCell"），
+    #    等效于把图片嵌入单元格：图片恰好填满所在单元格，调整行高/列宽时
+    #    随单元格一起缩放（“随单元格移动并调整大小”），且不可能溢出压盖
+    #    其他单元格里的图片。
     for img, fr, dw, dh in fitted:
-        img.anchor = OneCellAnchor(
-            _from=AnchorMarker(col=fr.col, colOff=fr.colOff or 0,
-                               row=fr.row, rowOff=fr.rowOff or 0),
-            ext=XDRPositiveSize2D(int(round(dw * EMU_PER_PX)),
-                                  int(round(dh * EMU_PER_PX))),
+        img.anchor = TwoCellAnchor(
+            _from=AnchorMarker(col=fr.col, colOff=0, row=fr.row, rowOff=0),
+            to=AnchorMarker(col=fr.col + 1, colOff=0,
+                            row=fr.row + 1, rowOff=0),
+            editAs='twoCell',
         )
 
 
