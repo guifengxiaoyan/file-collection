@@ -605,6 +605,11 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
         source_col = src_ncols + 1
         out_ws.column_dimensions[get_column_letter(source_col)].width = 18
 
+    # 把每张图片收敛到其锚定单元格内：浮动/未嵌入单元格的图片尺寸由自身决定，
+    # 超出单元格就会压盖相邻单元格里的图片（合并后“图片重叠堆叠”）。
+    # 这里优先扩展行列网格容纳图片（有上限），仍超限则等比缩小，确保互不重叠。
+    _fit_images_to_cells(out_ws)
+
     buf = io.BytesIO()
     out_wb.save(buf)
     buf.seek(0)
@@ -612,6 +617,99 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     # 把 WPS 单元格内嵌图片（DISPIMG 截图）重新注入结果，避免合并后截图丢失/重叠
     buf = _inject_wps_cell_images(buf, wps_images)
     return buf
+
+
+def _fit_images_to_cells(out_ws, max_col_px=425, max_row_px=533):
+    """把工作表中所有图片收敛到各自锚定单元格内，避免相互重叠堆叠。
+
+    背景：收集上来的 Excel 里，图片常常是「浮动/未嵌入单元格」的，其显示尺寸
+    由图片自身决定，不受单元格约束。按行合并后，图片尺寸超出所在单元格时就会
+    压盖到相邻单元格的图片上，表现为“合并后图片重叠堆叠”。
+
+    做法（对每张图）：
+      1. 取图片当前显示尺寸（oneCellAnchor 取 ext；twoCellAnchor 按网格跨度折算）；
+      2. 宽度以 max_col_px 为上限、高度以 max_row_px 为上限，超限则等比缩小；
+      3. 若行列网格容纳不下，优先扩展该列列宽/该行行高（取两者较大值）；
+      4. 统一改写为 OneCellAnchor + 显式 ext，使图片被“关”在单元格矩形内。
+
+    这样每张图都只占自己单元格的范围，任意两张图都不可能重叠。
+    """
+    def col_w_px(cidx):
+        w = out_ws.column_dimensions[get_column_letter(cidx + 1)].width
+        return round((w or 8.43) * 7) + 5
+
+    def row_h_px(ridx):
+        h = out_ws.row_dimensions[ridx + 1].height
+        return round((h or 15) * 96 / 72)
+
+    # 1) 收集每张图的锚点与像素尺寸
+    infos = []
+    for img in out_ws._images:
+        a = img.anchor
+        fr = getattr(a, '_from', None)
+        if fr is None:
+            continue
+        w = h = 0
+        ext = getattr(a, 'ext', None)
+        if ext is not None and (getattr(ext, 'cx', 0) or 0) > 0:
+            w, h = ext.cx // EMU_PER_PX, ext.cy // EMU_PER_PX
+        else:
+            to = getattr(a, 'to', None)
+            if to is not None:
+                x1 = col_w_px(to.col) + (to.colOff or 0) // EMU_PER_PX
+                y1 = row_h_px(to.row) + (to.rowOff or 0) // EMU_PER_PX
+                x0 = col_w_px(fr.col) + (fr.colOff or 0) // EMU_PER_PX
+                y0 = row_h_px(fr.row) + (fr.rowOff or 0) // EMU_PER_PX
+                w, h = x1 - x0, y1 - y0
+        if w <= 0 or h <= 0:
+            w = getattr(img, 'width', None) or 120
+            h = getattr(img, 'height', None) or 70
+        infos.append((img, fr, w, h))
+
+    if not infos:
+        return
+
+    # 2) 计算每张图的收敛后尺寸，以及需要扩展的列宽/行高
+    need_col, need_row, fitted = {}, {}, []
+    for img, fr, w, h in infos:
+        disp_w = min(w, max_col_px)
+        scale = disp_w / w if w else 1.0
+        disp_h = h * scale
+        if disp_h > max_row_px:
+            scale = max_row_px / disp_h if disp_h else 1.0
+            disp_w *= scale
+            disp_h = max_row_px
+        # 列宽不够则扩展（不超过上限）
+        cw = col_w_px(fr.col)
+        if disp_w > cw:
+            need_col[fr.col] = max(need_col.get(fr.col, 0), disp_w)
+        # 行高不够则扩展（不超过上限）
+        rh = row_h_px(fr.row)
+        if disp_h > rh:
+            need_row[fr.row] = max(need_row.get(fr.row, 0), disp_h)
+        fitted.append((img, fr, disp_w, disp_h))
+
+    # 3) 应用扩展后的列宽/行高（与源表已复制的值取较大者）
+    for cidx, px in need_col.items():
+        letter = get_column_letter(cidx + 1)
+        chars = (px - 5) / 7.0
+        cur = out_ws.column_dimensions[letter].width
+        if not cur or chars > cur:
+            out_ws.column_dimensions[letter].width = round(chars, 2)
+    for ridx, px in need_row.items():
+        pts = px * 72.0 / 96.0
+        cur = out_ws.row_dimensions[ridx + 1].height
+        if not cur or pts > cur:
+            out_ws.row_dimensions[ridx + 1].height = round(pts, 2)
+
+    # 4) 统一改写为 OneCellAnchor + 显式 ext，把图片“关”进单元格矩形
+    for img, fr, dw, dh in fitted:
+        img.anchor = OneCellAnchor(
+            _from=AnchorMarker(col=fr.col, colOff=fr.colOff or 0,
+                               row=fr.row, rowOff=fr.rowOff or 0),
+            ext=XDRPositiveSize2D(int(round(dw * EMU_PER_PX)),
+                                  int(round(dh * EMU_PER_PX))),
+        )
 
 
 def _safe_fs_name(name, max_len=80):
