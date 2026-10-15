@@ -480,6 +480,14 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     first_ws = first_wb.active
     src_ncols = first_ws.max_column
     header = [first_ws.cell(row=1, column=c).value for c in range(1, src_ncols + 1)]
+    # 记录源表列宽与表头行高：浮动图/“随单元格移动并调整大小”图片的显示尺寸由
+    # 行列网格决定。若合并后沿用默认行高列宽，图片会被压缩、缩放失真或漂移到
+    # 错误位置（表现为“合并后图片混乱显示”），故必须沿用源表网格。
+    col_widths = {}
+    for letter, dim in first_ws.column_dimensions.items():
+        if dim.width:
+            col_widths[letter] = dim.width
+    header_height = first_ws.row_dimensions[1].height
     first_wb.close()
 
     out_wb = openpyxl.Workbook()
@@ -495,6 +503,12 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
         cell = out_ws.cell(row=1, column=c, value=val)
         if c <= src_ncols:
             _copy_cell_style(first_ws.cell(row=1, column=c), cell)
+
+    # 沿用源表列宽与表头行高，保证图片按原网格定位/缩放
+    for letter, w in col_widths.items():
+        out_ws.column_dimensions[letter].width = w
+    if header_height:
+        out_ws.row_dimensions[1].height = header_height
 
     out_row = 2
     last_key = None            # 上一行写入的“数据列”内容，用于去重
@@ -551,6 +565,12 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                 cell = out_ws.cell(row=out_row, column=c, value=val)
                 if c <= src_ncols:
                     _copy_cell_style(ws.cell(row=r, column=c), cell)
+
+            # 沿用该行行高（各文件行高可能不同，按贡献行的来源复制），
+            # 否则图片会因网格高度变化而被压缩/错位
+            src_h = ws.row_dimensions[r].height
+            if src_h:
+                out_ws.row_dimensions[out_row].height = src_h
 
             # 把本行图片整体平移到输出表对应行：保留锚定类型/尺寸/偏移，
             # 不丢图、不重叠（delta=out_row-r 使图片严格跟随其数据行下沉）
