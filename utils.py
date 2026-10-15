@@ -204,12 +204,14 @@ def _collect_wps_cell_images(path):
 
     # rId -> 相对 xl/ 的 media 路径
     rid_target = {}
-    for m in re.finditer(r'Id="(rId\d+)"[^>]*?Target="([^"]+)"', rels):
+    # \w+ 覆盖 rId1 以及 rIdImg1 这类带字母的 Id（容错）
+    for m in re.finditer(r'Id="(rId\w+)"[^>]*?Target="([^"]+)"', rels):
         rid_target[m.group(1)] = m.group(2)
 
     out = []
     seen = set()
-    for block in re.findall(r'<etc:cellImage>.*?</etc:cellImage>', cellimages, re.S):
+    # 注意 pic 块可能带 xmlns 等属性（<etc:cellImage xmlns:...>），故属性部分用 [^>]* 容忍
+    for block in re.findall(r'<etc:cellImage[^>]*>.*?</etc:cellImage>', cellimages, re.S):
         nm = re.search(r'<xdr:cNvPr[^>]*?\bname="([^"]+)"', block)
         blip = re.search(r'<a:blip[^>]*?r:embed="([^"]+)"', block)
         if not nm or not blip:
@@ -254,7 +256,10 @@ def _inject_wps_cell_images(buf, images):
     cellimage_parts = []
     rels_items = []
     for i, img in enumerate(images, 1):
-        rid = f'rIdImg{i}'
+        # 关系 Id 用纯数字后缀（rId1, rId2, ...），与 _collect_wps_cell_images
+        # 中解析 rels 的 'Id="(rId\d+)"' 正则保持一致，避免 rIdImg1 这类带字母的
+        # Id 无法被匹配导致截图收集为空。
+        rid = f'rId{i}'
         # 仅替换第一个 r:embed（每个 pic 只有一个 blip）
         pic = re.sub(
             r'(<a:blip[^>]*?r:embed=")[^"]+(")',
