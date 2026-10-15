@@ -161,9 +161,10 @@ def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
     else:
         new_img.anchor = OneCellAnchor(_from=new_from)
 
-    # 冲突避让：同格多图时整图下移一行（from/to 同步），避免覆盖
+    # 冲突避让：同格多图时整图逐行下移，直到找到空位，绝不覆盖
+    # （单次 +1 只够 2 张，3 张及以上会重叠，故用循环查找下一个空行）
     key = (new_from.row, new_from.col)
-    if key in occupied:
+    while key in occupied:
         new_from.row += 1
         if isinstance(new_img.anchor, TwoCellAnchor):
             new_to.row += 1
