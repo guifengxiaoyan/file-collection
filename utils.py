@@ -140,7 +140,8 @@ def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
 
     - 源图片若锚定在 (fr.row, fr.col)，平移后锚定行为 (fr.row+delta, out_col-1)；
       delta = out_row - r（1-based 行相减），保证图片跟随其数据行下沉。
-    - 同一单元格出现多张图片（极端情况）时，整图下移一行避让，绝不丢弃。
+    - 同一单元格出现多张图片（极端情况）时，优先在本行右侧找空位避让
+      （图片仍锚在原来的数据行上），本行右侧也满才逐行下移，绝不丢弃。
     返回 True/False。
     """
     try:
@@ -199,15 +200,29 @@ def _add_shifted_image(out_ws, img, out_row, out_col, occupied, delta):
         new_img.anchor = OneCellAnchor(
             _from=new_from, ext=_image_ext(a, w_px, h_px))
 
-    # 冲突避让：同格多图时整图逐行下移，直到找到空位，绝不覆盖
-    # （单次 +1 只够 2 张，3 张及以上会重叠，故用循环查找下一个空行）
+    # 冲突避让：同格多图时，优先在本行右侧找空位——图片仍锚在原来的数据行上
+    # （不会错到相邻记录行，也不会被后续行的图片连锁挤到数据表之外），
+    # 本行右侧也满（最多右移 3 列）才逐行下移，绝不覆盖、绝不丢弃
     key = (new_from.row, new_from.col)
-    while key in occupied:
-        new_from.row += 1
+    if key in occupied:
+        span_c = None
         if isinstance(new_img.anchor, TwoCellAnchor):
-            new_to.row += 1
-        key = (new_from.row, new_from.col)
-    occupied.add(key)
+            span_c = new_to.col - new_from.col
+        shifted = False
+        for dc in range(1, 4):
+            if (new_from.row, new_from.col + dc) not in occupied:
+                new_from.col += dc
+                if span_c is not None:
+                    new_to.col = new_from.col + span_c
+                shifted = True
+                break
+        if not shifted:
+            while key in occupied:
+                new_from.row += 1
+                if isinstance(new_img.anchor, TwoCellAnchor):
+                    new_to.row += 1
+                key = (new_from.row, new_from.col)
+    occupied.add((new_from.row, new_from.col))
 
     try:
         out_ws.add_image(new_img)
