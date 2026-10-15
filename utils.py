@@ -286,6 +286,36 @@ def _collect_wps_cell_images(path):
     return out
 
 
+# WPS「单元格内嵌图片」的锚定公式，如 =_xlfn.DISPIMG("ID_1",1)
+_DISPIMG_RE = re.compile(r'DISPIMG\(\s*"([^"]+)"')
+
+
+def _collect_dispimg_cells(path):
+    """扫描工作表中所有 DISPIMG 公式单元格，返回 [(row0, col0, image_name), ...]。
+
+    WPS 的「单元格内嵌图片」以 =_xlfn.DISPIMG("ID",1) 公式锚定在单元格中，
+    公式文本在 Excel / 网页预览等非 WPS 环境里无法解析（显示为公式或 #NAME?），
+    且 openpyxl 保存时会丢失。合并时把这些截图转换为真实图片，需要先知道
+    每张截图所在的单元格位置。
+    """
+    try:
+        wb = openpyxl.load_workbook(path)
+    except Exception:
+        return []
+    cells = []
+    try:
+        ws = wb.active
+        for row in ws.iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and c.value.startswith('='):
+                    m = _DISPIMG_RE.search(c.value)
+                    if m:
+                        cells.append((c.row - 1, c.column - 1, m.group(1)))
+    finally:
+        wb.close()
+    return cells
+
+
 def _inject_wps_cell_images(buf, images):
     """把 WPS 单元格内嵌图片重新写入已保存的 xlsx 字节流。
 
@@ -480,18 +510,25 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
       - 原文件中的图片（浮动/未锁定、锚定到单元格、随单元格移动并调整大小，以及
         WPS 以 DISPIMG 公式锚定的“单元格内嵌截图”）在合并后会跟随各自的数据行整体
         下沉到正确位置：保留锚定类型/尺寸/偏移，跨列与表头图片不丢、同格多图不重叠。
+      - WPS 的 DISPIMG 截图会转换为真实图片（DISPIMG 是 WPS 私有函数，公式文本在
+        Excel / 网页预览中无法解析，只会显示 =DISPIMG(...)），转换后与其它图片一样
+        嵌入单元格、随单元格缩放、不重叠，全环境可见。
 
     返回 io.BytesIO（xlsx 字节流），无数据则返回 None。
     """
     if not files:
         return None
 
-    # 预收集所有 WPS 单元格内嵌图片（openpyxl 保存时会丢弃，需事后重新注入）
-    wps_images = []
-    for f in files:
+    # 预收集所有 WPS 单元格内嵌截图（openpyxl 保存时会丢弃），并记录每个文件中
+    # DISPIMG 公式所在的单元格——合并时把这些截图转换为真实图片（公式文本在
+    # Excel / 网页预览中无法解析，只会显示 =DISPIMG(...)，用户看不到图）
+    media_by_name = {}
+    disp_cells_by_file = {}
+    for fi, f in enumerate(files):
         for img in _collect_wps_cell_images(f['path']):
-            if not any(i['name'] == img['name'] for i in wps_images):
-                wps_images.append(img)
+            if img['name'] not in media_by_name:
+                media_by_name[img['name']] = img
+        disp_cells_by_file[fi] = _collect_dispimg_cells(f['path'])
 
     # 以第一个文件为模板：表头、列数、工作表名
     first_wb = openpyxl.load_workbook(files[0]['path'])
@@ -512,15 +549,45 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     out_ws = out_wb.active
     out_ws.title = first_ws.title or '合并'
 
+    occupied = set()           # 已放置图片的 (行, 列)，避免重合
+
+    def _place_dispimg(out_row, col0, name):
+        """把 WPS DISPIMG 截图转换为真实图片放到 (out_row, col0+1)，并清除原公式。
+
+        转换后该截图与其它图片一视同仁：嵌入单元格、随单元格缩放、不重叠，
+        且在 Excel / WPS / 网页预览中都能正常显示（公式文本则不能）。
+        """
+        media = media_by_name.get(name)
+        if not media:
+            return False
+        img = XLImage(io.BytesIO(media['media']))
+        img.anchor = OneCellAnchor(
+            _from=AnchorMarker(col=col0, row=out_row - 1, colOff=0, rowOff=0))
+        if _add_shifted_image(out_ws, img, out_row, col0 + 1, occupied, delta=0):
+            # 图片已就位（避让后可能落到相邻单元格），原公式单元格清空
+            out_ws.cell(row=out_row, column=col0 + 1).value = None
+            return True
+        return False
+
     # 可选的“来源”列
     if mark_source:
         header = header + ['收集对象']
 
     # 写入表头（含样式）
     for c, val in enumerate(header, 1):
+        # 表头中的 DISPIMG 截图公式：清除公式，图片随后转换为真实图片
+        if isinstance(val, str) and val.startswith('='):
+            m = _DISPIMG_RE.search(val)
+            if m and m.group(1) in media_by_name:
+                val = None
         cell = out_ws.cell(row=1, column=c, value=val)
         if c <= src_ncols:
             _copy_cell_style(first_ws.cell(row=1, column=c), cell)
+
+    # 表头行（仅首文件）的 DISPIMG 截图 -> 转换为真实图片固定到第 1 行
+    for (r0, c0, name) in disp_cells_by_file.get(0, []):
+        if r0 == 0:
+            _place_dispimg(1, c0, name)
 
     # 沿用源表列宽与表头行高，保证图片按原网格定位/缩放
     for letter, w in col_widths.items():
@@ -530,7 +597,6 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
 
     out_row = 2
     last_key = None            # 上一行写入的“数据列”内容，用于去重
-    occupied = set()           # 已放置图片的 (行, 列)，避免重合
 
     for fi, f in enumerate(files):
         wb = openpyxl.load_workbook(f['path'])
@@ -576,10 +642,19 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                                               out_col=ic + 1, occupied=occupied,
                                               delta=kept_row - r):
                             placed_ids.add(id(img))
+                # 被丢弃行的 WPS DISPIMG 截图同样固定到保留行
+                for (ir, ic, name) in disp_cells_by_file.get(fi, []):
+                    if ir == r - 1:
+                        _place_dispimg(kept_row, ic, name)
                 continue
 
             # 写入该行数据（含样式）
             for c, val in enumerate(row_vals, 1):
+                # DISPIMG 截图公式：清除公式（截图随后转换为真实图片）
+                if isinstance(val, str) and val.startswith('='):
+                    m = _DISPIMG_RE.search(val)
+                    if m and m.group(1) in media_by_name:
+                        val = None
                 cell = out_ws.cell(row=out_row, column=c, value=val)
                 if c <= src_ncols:
                     _copy_cell_style(ws.cell(row=r, column=c), cell)
@@ -598,6 +673,11 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                                           out_col=ic + 1, occupied=occupied,
                                           delta=out_row - r):
                         placed_ids.add(id(img))
+
+            # 本行的 WPS DISPIMG 截图 -> 转换为真实图片（公式已清除）
+            for (ir, ic, name) in disp_cells_by_file.get(fi, []):
+                if ir == r - 1:
+                    _place_dispimg(out_row, ic, name)
 
             last_key = data_key
             out_row += 1
@@ -629,12 +709,11 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     # TwoCellAnchor（editAs="twoCell"）——图片填满单元格且随行高列宽一起缩放。
     _fit_images_to_cells(out_ws)
 
+    # 注：WPS DISPIMG 截图已在上面逐行转换为真实图片（嵌入单元格、随单元格缩放），
+    # 无需再注入 cellimages.xml；_inject_wps_cell_images 仅用于构造测试用源文件。
     buf = io.BytesIO()
     out_wb.save(buf)
     buf.seek(0)
-
-    # 把 WPS 单元格内嵌图片（DISPIMG 截图）重新注入结果，避免合并后截图丢失/重叠
-    buf = _inject_wps_cell_images(buf, wps_images)
     return buf
 
 
