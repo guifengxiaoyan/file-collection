@@ -5,6 +5,7 @@ import shutil
 import uuid
 import zipfile
 from copy import copy
+from flask import send_file
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from models import db, Admin
@@ -17,6 +18,113 @@ from openpyxl.drawing.spreadsheet_drawing import (
 )
 
 EMU_PER_PX = 9525  # 1 像素 = 9525 EMU（96 DPI）
+
+# Excel 名单导入时视为“表头”的常见写法（精确匹配，忽略大小写与首尾空白）
+EXCEL_HEADER_EXACT = {
+    '姓名', '名称', '名字', '对象', '收集对象', '名单', '人员', '人员名单',
+    '序号', '编号', '部门', '单位', '班级', '工号', 'id', 'no', 'no.',
+    'name', 'names', 'user', 'username',
+}
+# 表头常用关键词（子串匹配）：覆盖“部门名称”“收集对象名单”等复合表头
+EXCEL_HEADER_KEYWORDS = ('姓名', '名称', '名单', '序号', '编号', '收集对象', '对象名称')
+
+
+def looks_like_excel_header(value):
+    """判断 Excel 首行首列是否像表头（而不是收集对象名称）。
+
+    收集对象名单 Excel 通常带一行表头（如“姓名”“部门名称”），旧实现会把表头
+    也导入成一个收集对象。这里用“常见表头词精确匹配 + 关键词子串匹配”识别，
+    正常对象名（人名/部门名等）不会命中。
+    """
+    if value is None:
+        return False
+    text = str(value).strip().lower()
+    if not text:
+        return False
+    if text in EXCEL_HEADER_EXACT:
+        return True
+    return any(kw in text for kw in EXCEL_HEADER_KEYWORDS)
+
+
+def read_excel_names(file_stream):
+    """从 Excel 文件流中读取第一列的收集对象名称列表。
+
+    - 首行若看起来是表头（见 looks_like_excel_header）则跳过；
+    - 跳过空白单元格，并按出现顺序去重；
+    - 解析失败（文件损坏/格式不符）返回 None，由调用方决定如何提示。
+
+    供创建主题（routes.create_theme）与收集对象管理
+    （routes.manage_theme_objects）共用，保证两端行为一致。
+    """
+    try:
+        wb = openpyxl.load_workbook(file_stream)
+    except Exception:
+        return None
+    try:
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+    except Exception:
+        return None
+    finally:
+        try:
+            wb.close()
+        except Exception:
+            pass
+
+    if not rows:
+        return []
+
+    names = []
+    seen = set()
+    start = 1 if (rows[0] and looks_like_excel_header(rows[0][0])) else 0
+    for row in rows[start:]:
+        if not row:
+            continue
+        cell = row[0]
+        if cell is None:
+            continue
+        name = str(cell).strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        names.append(name)
+    return names
+
+
+def send_download(file_or_path, download_name, **kwargs):
+    """send_file 的下载封装：为非 ASCII 下载名补一个可读的 ASCII 回退名。
+
+    Werkzeug 对中文等非 ASCII 下载名会同时生成两个文件名：
+    - ``filename``（ASCII 回退）：非 ASCII 字符被整体剥掉，"张三.txt" 会变成
+      ".txt"，只认 filename 的旧浏览器保存出来就是没有主名的文件；
+    - ``filename*``（RFC 5987）：现代浏览器使用，中文名正常。
+
+    这里在 send_file 之后把回退名替换为“保留名称中的 ASCII 字符 + 原扩展名”的
+    安全名（如 "汇总表 2026.xlsx" -> "2026.xlsx"；全中文则退化为 "file.xlsx"），
+    并原样保留 filename*，不影响现代浏览器。纯 ASCII 名不做任何处理。
+    """
+    resp = send_file(file_or_path, as_attachment=True,
+                     download_name=download_name, **kwargs)
+    try:
+        download_name.encode('ascii')
+        return resp  # 纯 ASCII 名，Werkzeug 的回退名没有问题
+    except UnicodeEncodeError:
+        pass
+    base, ext = os.path.splitext(download_name)
+    ascii_base = ''.join(
+        ch for ch in base if ch.isascii() and (ch.isalnum() or ch in ' -_()[]')
+    ).strip().strip('._- ')
+    ascii_ext = ''.join(ch for ch in ext if ch.isascii())
+    fallback = (ascii_base or 'file') + ascii_ext
+    cd = resp.headers.get('Content-Disposition', '')
+    if cd:
+        if 'filename="' in cd:
+            # 只替换第一个 filename="..."（ASCII 回退），保留 filename*
+            cd = re.sub(r'filename="[^"]*"', 'filename="%s"' % fallback, cd, count=1)
+        else:
+            cd = re.sub(r'filename=[^;]*', 'filename="%s"' % fallback, cd, count=1)
+        resp.headers['Content-Disposition'] = cd
+    return resp
 
 # WPS「单元格内嵌图片」(以 DISPIMG 公式锚定在单元格中的截图) 相关声明。
 # openpyxl 无法识别这类图片（ws._images 为空），保存时会把整张图片存储丢弃，
@@ -505,7 +613,8 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     files: list of dict { path, object_name, original_name }
       - 以第一个文件的表头为合并后表头；
       - 逐行（按行合并）把所有文件的数据行堆叠到一起；
-      - merge_identical=True 时，跨所有文件删除“数据列完全相同”的重复行（去重合并）；
+      - merge_identical=True 时，跨所有文件全局删除“数据列完全相同”的重复行
+        （不限相邻行，保留首次出现的那行；被去重行的图片固定到保留行）；
       - mark_source=True 时，在末尾新增“收集对象”列标注来源；
       - 原文件中的图片（浮动/未锁定、锚定到单元格、随单元格移动并调整大小，以及
         WPS 以 DISPIMG 公式锚定的“单元格内嵌截图”）在合并后会跟随各自的数据行整体
@@ -596,7 +705,9 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
         out_ws.row_dimensions[1].height = header_height
 
     out_row = 2
-    last_key = None            # 上一行写入的“数据列”内容，用于去重
+    # merge_identical：记录每个“数据列完全相同的行”首次出现的输出行号，
+    # 实现跨所有文件的全局去重（不限相邻行）；重复行的图片固定到首次出现的行
+    seen_rows = {}             # data_key(tuple) -> 该行首次出现的输出行号
 
     for fi, f in enumerate(files):
         wb = openpyxl.load_workbook(f['path'])
@@ -631,11 +742,12 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                 row_vals = row_vals + [f['object_name']]
 
             data_key = row_vals[:src_ncols]  # 用于比较“相同行”的键（不含来源列）
+            row_key = tuple(data_key)
 
-            if merge_identical and data_key == last_key:
-                # 完全相同的行 -> 合并（去重）：不新增输出行，
-                # 但把被丢弃行的图片“固定”到保留行对应单元格，避免丢失
-                kept_row = out_row - 1
+            if merge_identical and row_key in seen_rows:
+                # 与之前某文件/某一行完全相同 -> 合并（去重）：不新增输出行，
+                # 把本行图片“固定”到该行首次出现的位置，避免图片丢失
+                kept_row = seen_rows[row_key]
                 for (ir, ic, img) in file_imgs:
                     if ir == r - 1 and id(img) not in placed_ids:
                         if _add_shifted_image(out_ws, img, out_row=kept_row,
@@ -679,7 +791,8 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                 if ir == r - 1:
                     _place_dispimg(out_row, ic, name)
 
-            last_key = data_key
+            if merge_identical:
+                seen_rows[row_key] = out_row
             out_row += 1
 
         # 兜底：锚定在「非数据行」（如空白行上的浮动图）的图片，按整块行偏移平移放入，

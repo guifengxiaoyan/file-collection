@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db, Admin, Announcement, AnnouncementAttachment, CollectionTheme, CollectionObject, CollectionObjectTemplate, Attachment, ThemeAttachment, beijing_now
@@ -8,9 +8,19 @@ from config import Config
 from utils import (
     allowed_file, get_theme_folder, get_object_folder, get_announcement_folder,
     rename_uploaded_file, sanitize_stored_filename, create_export_archive,
-    safe_remove_file, safe_remove_dir, detect_excel_merge_ready, merge_excel_files
+    safe_remove_file, safe_remove_dir, detect_excel_merge_ready, merge_excel_files,
+    read_excel_names, send_download
 )
-import openpyxl
+
+
+def _parse_deadline(value):
+    """解析 datetime-local 表单提交的截止时间；缺失或格式非法返回 None。"""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, '%Y-%m-%dT%H:%M')
+    except (ValueError, TypeError):
+        return None
 
 def register_routes(app):
     
@@ -142,19 +152,19 @@ def register_routes(app):
         attachment = Attachment.query.get_or_404(attachment_id)
         obj = attachment.collection_object
         file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), attachment.filename)
-        return send_file(file_path, as_attachment=True, download_name=attachment.original_name)
+        return send_download(file_path, attachment.original_name)
 
     @app.route('/announcement/download/<int:attachment_id>')
     def download_announcement_attachment(attachment_id):
         attachment = AnnouncementAttachment.query.get_or_404(attachment_id)
         file_path = os.path.join(get_announcement_folder(), attachment.filename)
-        return send_file(file_path, as_attachment=True, download_name=attachment.original_name)
+        return send_download(file_path, attachment.original_name)
 
     @app.route('/theme/download/<int:attachment_id>')
     def download_theme_attachment(attachment_id):
         attachment = ThemeAttachment.query.get_or_404(attachment_id)
         file_path = os.path.join(get_theme_folder(attachment.theme_id), attachment.filename)
-        return send_file(file_path, as_attachment=True, download_name=attachment.original_name)
+        return send_download(file_path, attachment.original_name)
 
     @app.route('/upload/delete-attachment/<int:attachment_id>', methods=['POST'])
     def delete_upload_attachment(attachment_id):
@@ -247,48 +257,71 @@ def register_routes(app):
     @app.route('/admin/theme/create', methods=['GET', 'POST'])
     @login_required
     def create_theme():
+        def _render_create_form():
+            from collections import OrderedDict
+            templates = CollectionObjectTemplate.query.order_by(
+                CollectionObjectTemplate.category, CollectionObjectTemplate.name).all()
+            templates_by_cat = OrderedDict()
+            for t in templates:
+                templates_by_cat.setdefault(t.category or '默认分组', []).append(t)
+            return render_template('theme_create.html', templates_by_cat=templates_by_cat)
+
         if request.method == 'POST':
-            title = request.form.get('title')
+            title = (request.form.get('title') or '').strip()
             description = request.form.get('description')
             announcement = request.form.get('announcement')
             deadline = request.form.get('deadline')
             collector_name = request.form.get('collector_name')
             collector_objects_text = request.form.get('collector_objects', '')
-            
+
+            # 服务端校验：标题与截止时间必填且格式合法。缺字段/格式非法时返回
+            # 表单并提示，而不是 datetime.strptime(None) 直接 500。
+            if not title:
+                flash('主题名称不能为空', 'error')
+                return _render_create_form()
+            deadline_dt = _parse_deadline(deadline)
+            if deadline_dt is None:
+                flash('截止时间不能为空，且格式应为“年-月-日 时:分”', 'error')
+                return _render_create_form()
+
             theme = CollectionTheme(
                 title=title,
                 description=description,
                 announcement=announcement,
-                deadline=datetime.strptime(deadline, '%Y-%m-%dT%H:%M'),
+                deadline=deadline_dt,
                 collector_name=collector_name
             )
             db.session.add(theme)
             db.session.commit()
-            
-            # 处理文本输入的收集对象
-            if collector_objects_text.strip():
-                object_names = collector_objects_text.strip().split('\n')
-                for name in object_names:
-                    name = name.strip()
-                    if name:
-                        obj = CollectionObject(name=name, theme_id=theme.id)
-                        db.session.add(obj)
-            
-            # 处理Excel导入的收集对象
+
+            # 汇总三个来源（文本框 / Excel / 勾选模板）的收集对象名称，
+            # 跨来源按名称去重后统一入库。浏览器端“Excel 导入收集对象”会把
+            # 名单解析进文本框、同时文件仍会提交，去重后不会一份名单产生
+            # 两个对象；表头行由 read_excel_names 跳过。
+            object_names = []
+            seen_names = set()
+
+            def _add_object_name(raw):
+                name = (raw or '').strip()
+                if name and name not in seen_names:
+                    seen_names.add(name)
+                    object_names.append(name)
+
+            # 1) 文本框输入（一行一个）
+            for raw in collector_objects_text.split('\n'):
+                _add_object_name(raw)
+
+            # 2) Excel 导入的收集对象
             if 'objects_excel_file' in request.files:
                 file = request.files.get('objects_excel_file')
                 if file and file.filename and file.filename.endswith(('.xls', '.xlsx')):
                     file.seek(0)
-                    wb = openpyxl.load_workbook(file)
-                    ws = wb.active
-                    for row in ws.iter_rows(values_only=True):
-                        if row and len(row) > 0:
-                            cell = row[0]
-                            if cell is not None:
-                                name = str(cell).strip()
-                                if name:
-                                    obj = CollectionObject(name=name, theme_id=theme.id)
-                                    db.session.add(obj)
+                    excel_names = read_excel_names(file)
+                    if excel_names is None:
+                        flash('Excel 文件解析失败，已跳过该文件的收集对象导入', 'error')
+                    else:
+                        for name in excel_names:
+                            _add_object_name(name)
             
             if 'attachments' in request.files:
                 import json
@@ -322,26 +355,24 @@ def register_routes(app):
                         )
                         db.session.add(att)
             db.session.commit()
-            
-            # 处理从收集对象模板添加的对象
+
+            # 3) 处理从收集对象模板添加的对象（与前两个来源一起去重）
             selected_templates = request.form.getlist('selected_templates')
             for tid in selected_templates:
                 try:
                     tpl = CollectionObjectTemplate.query.get(int(tid))
                 except (ValueError, TypeError):
                     tpl = None
-                if tpl and tpl.name.strip():
-                    db.session.add(CollectionObject(name=tpl.name.strip(), theme_id=theme.id))
+                if tpl:
+                    _add_object_name(tpl.name)
+
+            for name in object_names:
+                db.session.add(CollectionObject(name=name, theme_id=theme.id))
             db.session.commit()
 
             flash('收集主题创建成功', 'success')
             return redirect(url_for('admin_dashboard', tab='themes'))
-        from collections import OrderedDict
-        templates = CollectionObjectTemplate.query.order_by(CollectionObjectTemplate.category, CollectionObjectTemplate.name).all()
-        templates_by_cat = OrderedDict()
-        for t in templates:
-            templates_by_cat.setdefault(t.category or '默认分组', []).append(t)
-        return render_template('theme_create.html', templates_by_cat=templates_by_cat)
+        return _render_create_form()
 
     @app.route('/admin/object-templates', methods=['GET', 'POST'])
     @login_required
@@ -429,22 +460,21 @@ def register_routes(app):
                 if 'excel_file' in request.files:
                     file = request.files.get('excel_file')
                     if file and file.filename.endswith(('.xls', '.xlsx')):
-                        wb = openpyxl.load_workbook(file)
-                        ws = wb.active
-                        imported_count = 0
-                        for row in ws.iter_rows(values_only=True):
-                            if row and len(row) > 0:
-                                cell = row[0]
-                                if cell is not None:
-                                    name = str(cell).strip()
-                                    if name:
-                                        existing = CollectionObject.query.filter_by(name=name, theme_id=theme_id).first()
-                                        if not existing:
-                                            obj = CollectionObject(name=name, theme_id=theme_id)
-                                            db.session.add(obj)
-                                            imported_count += 1
-                        db.session.commit()
-                        flash(f'Excel导入成功，共导入 {imported_count} 条数据', 'success')
+                        file.seek(0)
+                        # read_excel_names：跳过表头行、文件内去重；
+                        # 解析失败返回 None（提示而不是 500）
+                        excel_names = read_excel_names(file)
+                        if excel_names is None:
+                            flash('Excel 文件解析失败，请检查文件格式', 'error')
+                        else:
+                            imported_count = 0
+                            for name in excel_names:
+                                existing = CollectionObject.query.filter_by(name=name, theme_id=theme_id).first()
+                                if not existing:
+                                    db.session.add(CollectionObject(name=name, theme_id=theme_id))
+                                    imported_count += 1
+                            db.session.commit()
+                            flash(f'Excel导入成功，共导入 {imported_count} 条数据', 'success')
         
         objects = CollectionObject.query.filter_by(theme_id=theme_id).all()
         completed = sum(1 for obj in objects if obj.is_completed)
@@ -520,7 +550,7 @@ def register_routes(app):
             file_path = os.path.join(get_object_folder(obj.theme.id, obj.id), att.filename)
             ext = os.path.splitext(att.original_name)[1]
             download_name = f"{obj.name}{ext}"
-            return send_file(file_path, as_attachment=True, download_name=download_name)
+            return send_download(file_path, download_name)
         else:
             import io
             import zipfile
@@ -531,7 +561,7 @@ def register_routes(app):
                     if os.path.exists(file_path):
                         zf.write(file_path, f"{obj.name}_{att.original_name}")
             memory_file.seek(0)
-            return send_file(memory_file, as_attachment=True, download_name=f"{obj.name}_附件.zip")
+            return send_download(memory_file, f"{obj.name}_附件.zip")
 
     @app.route('/admin/theme/<int:theme_id>/export')
     @login_required
@@ -542,7 +572,7 @@ def register_routes(app):
             flash('导出附件失败，请稍后重试', 'error')
             return redirect(url_for('manage_theme_objects', theme_id=theme_id))
         archive_path = os.path.join(get_theme_folder(theme_id), archive_name)
-        return send_file(archive_path, as_attachment=True)
+        return send_download(archive_path, os.path.basename(archive_path))
 
     @app.route('/admin/theme/<int:theme_id>/merge-excel', methods=['GET', 'POST'])
     @login_required
@@ -570,13 +600,12 @@ def register_routes(app):
                 flash('合并失败：没有可用的 Excel 数据', 'error')
                 return redirect(url_for('merge_excel', theme_id=theme_id))
 
-            from urllib.parse import quote
             download_name = f"{theme.title}_合并表格.xlsx"
-            # 用 quote 处理中文文件名，保证各浏览器下载文件名正确
-            return send_file(
+            # send_download 同时生成 filename*（现代浏览器用）与可读的 ASCII
+            # 回退名（旧浏览器用），中文主题名也能正确下载
+            return send_download(
                 buf,
-                as_attachment=True,
-                download_name=download_name,
+                download_name,
                 mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
 
@@ -706,10 +735,21 @@ def register_routes(app):
     def edit_theme(theme_id):
         theme = CollectionTheme.query.get_or_404(theme_id)
         if request.method == 'POST':
-            theme.title = request.form.get('title')
+            # 先校验再修改：标题/截止时间缺失或格式非法时返回表单提示，
+            # 而不是 strptime(None) 500 或写入半截数据
+            title = (request.form.get('title') or '').strip()
+            if not title:
+                flash('主题名称不能为空', 'error')
+                return render_template('theme_edit.html', theme=theme)
+            deadline_dt = _parse_deadline(request.form.get('deadline'))
+            if deadline_dt is None:
+                flash('截止时间不能为空，且格式应为“年-月-日 时:分”', 'error')
+                return render_template('theme_edit.html', theme=theme)
+
+            theme.title = title
             theme.description = request.form.get('description')
             theme.announcement = request.form.get('announcement')
-            theme.deadline = datetime.strptime(request.form.get('deadline'), '%Y-%m-%dT%H:%M')
+            theme.deadline = deadline_dt
             theme.collector_name = request.form.get('collector_name')
             
             if 'attachments' in request.files:

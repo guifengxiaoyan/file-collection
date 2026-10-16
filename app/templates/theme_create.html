@@ -44,6 +44,7 @@
             </div>
             <div class="form__group">
                 <label class="form__label"><i class="fas fa-users"></i> 收集对象（一行一个）</label>
+                <p class="form__hint"><i class="fas fa-info-circle"></i> 手动输入、Excel 导入与模板勾选三个来源会自动合并去重；Excel 首行若为表头（如“姓名”）将自动跳过。</p>
                 <textarea name="collector_objects" id="collector_objects" rows="6" placeholder="张三&#10;李四&#10;王五"></textarea>
                 <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <input type="file" name="objects_excel_file" id="objects_excel_input" accept=".xls,.xlsx" style="display:none;" onchange="handleObjectsExcel()">
@@ -159,6 +160,20 @@ function updateObjectsCount() {
 
 document.getElementById('collector_objects').addEventListener('input', updateObjectsCount);
 
+// 与服务端 utils.looks_like_excel_header 一致的表头识别规则：
+// 常见表头词精确匹配 + 关键词子串匹配，避免把“姓名”等表头导入为收集对象
+var EXCEL_HEADER_EXACT = ['姓名','名称','名字','对象','收集对象','名单','人员','人员名单','序号','编号','部门','单位','班级','工号','id','no','no.','name','names','user','username'];
+var EXCEL_HEADER_KEYWORDS = ['姓名','名称','名单','序号','编号','收集对象','对象名称'];
+function looksLikeExcelHeader(name) {
+    var t = String(name).trim().toLowerCase();
+    if (!t) return false;
+    if (EXCEL_HEADER_EXACT.indexOf(t) >= 0) return true;
+    for (var i = 0; i < EXCEL_HEADER_KEYWORDS.length; i++) {
+        if (t.indexOf(EXCEL_HEADER_KEYWORDS[i]) >= 0) return true;
+    }
+    return false;
+}
+
 function handleObjectsExcel() {
     var input = document.getElementById('objects_excel_input');
     var nameSpan = document.getElementById('objects_excel_name');
@@ -184,7 +199,12 @@ function handleObjectsExcel() {
                         var cell = sheet[cellAddress];
                         if (cell && cell.v !== undefined && cell.v !== null) {
                             var name = String(cell.v).trim();
-                            if (name) names.push(name);
+                            if (name) {
+                                // 首行若是表头（如“姓名”），跳过——与服务端
+                                // read_excel_names 的规则保持一致
+                                if (row === range.s.r && looksLikeExcelHeader(name)) continue;
+                                names.push(name);
+                            }
                         }
                     }
                     if (names.length === 0) { alert('未在Excel中找到有效数据'); return; }

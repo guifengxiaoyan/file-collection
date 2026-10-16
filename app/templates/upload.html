@@ -100,11 +100,35 @@
 var fileInput = document.getElementById('file-input');
 var fileListDisplay = document.getElementById('file-list-display');
 var finishBtn = document.getElementById('finish-btn');
+var dropArea = document.getElementById('drop-area');
+var finishForm = document.getElementById('finish-form');
 var attachmentCount = {{ attachments|length }};
+// 仅在“可上传”状态（未完成且未过期）才渲染上传区与完成按钮；
+// 已完成/已过期时 #file-input/#drop-area 不存在，必须先判空再绑定事件
+var canUpload = {% if expired or collection_object.is_completed %}false{% else %}true{% endif %};
 
-fileInput.addEventListener('change', function(e) {
-    updateFileDisplay(this.files);
-});
+if (fileInput) {
+    fileInput.addEventListener('change', function(e) {
+        updateFileDisplay(this.files);
+    });
+}
+
+if (dropArea) {
+    dropArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+    });
+    dropArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+    });
+    dropArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        fileInput.files = e.dataTransfer.files;
+        updateFileDisplay(fileInput.files);
+    });
+}
 
 function updateFileDisplay(files) {
     if (files.length > 0) {
@@ -123,6 +147,12 @@ function updateFileDisplay(files) {
 }
 
 function updateFinishButton() {
+    if (!finishBtn) return;
+    if (!canUpload) {
+        // 已完成/已过期：完成按钮保持禁用（服务端同样会拒绝）
+        finishBtn.disabled = true;
+        return;
+    }
     var currentAttachments = document.querySelectorAll('#attachment-list li').length;
     finishBtn.disabled = (attachmentCount === 0 && currentAttachments === 0);
 }
@@ -145,30 +175,17 @@ function deleteAttachment(attachmentId) {
     .catch(error => { console.error('Error:', error); alert('删除失败'); });
 }
 
-// Drag and drop
-var dropArea = document.getElementById('drop-area');
-dropArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.classList.add('drag-over');
-});
-dropArea.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    this.classList.remove('drag-over');
-});
-dropArea.addEventListener('drop', function(e) {
-    e.preventDefault();
-    this.classList.remove('drag-over');
-    fileInput.files = e.dataTransfer.files;
-    updateFileDisplay(fileInput.files);
-});
+// Drag and drop 事件绑定已在上方按元素存在性处理
 
 var formSubmitted = false;
-document.getElementById('finish-form').addEventListener('submit', function() {
-    formSubmitted = true;
-});
+if (finishForm) {
+    finishForm.addEventListener('submit', function() {
+        formSubmitted = true;
+    });
+}
 
 window.addEventListener('beforeunload', function(e) {
-    if (formSubmitted) return;
+    if (formSubmitted || !canUpload) return;
     var currentAttachments = document.querySelectorAll('#attachment-list li').length;
     var totalAttachments = attachmentCount + currentAttachments;
     if (totalAttachments > 0) {

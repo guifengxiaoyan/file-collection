@@ -4,4 +4,5 @@ Flask-Login==0.6.3
 Werkzeug==3.0.1
 python-dotenv==1.0.0
 openpyxl==3.1.2
-Pillow==10.2.0
+# Pillow 10.2.0 在 Python 3.13+ 无预编译 wheel 会回源源码编译；放宽下限取新版
+Pillow>=10.4
