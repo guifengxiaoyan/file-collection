@@ -73,7 +73,7 @@
 
         <label class="merge-opt">
             <input type="checkbox" name="merge_identical">
-            <span><strong>合并相同的行</strong>（跨所有文件删除数据完全相同的重复行）</span>
+            <span><strong>合并各收集对象的数据</strong>（以首列「标识列」为键，把不同收集人填写的同一对象合并成完整的一行：互补的空值被补全、完全相同的只留一份，不会因整行相同而误删某方的提交）</span>
         </label>
 
         <label class="merge-opt">
@@ -83,7 +83,7 @@
 
         <p class="merge-note">
             <i class="fas fa-info-circle"></i>
-            合并以“按行堆叠”方式进行，单元格中的截图会被固定到原所在位置，绝不会因合并而丢失或重合。
+            合并以“按行堆叠”方式进行；勾选「合并各收集对象的数据」后，首列相同的行会被视为同一对象并合并成完整一行（不同收集人填的互补值自动补全，冲突的单元格保留先填写的一方，可在勾选「标记来源」后核对）。单元格中的截图会被固定到原所在位置，绝不会因合并而丢失或重合。
         </p>
 
         <div class="page-actions">

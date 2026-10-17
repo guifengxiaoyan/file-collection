@@ -613,8 +613,14 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
     files: list of dict { path, object_name, original_name }
       - 以第一个文件的表头为合并后表头；
       - 逐行（按行合并）把所有文件的数据行堆叠到一起；
-      - merge_identical=True 时，跨所有文件全局删除“数据列完全相同”的重复行
-        （不限相邻行，保留首次出现的那行；被去重行的图片固定到保留行）；
+      - merge_identical=True 时，以“首列（通常为 项目/姓名 等标识列）”为合并键，
+        把不同收集对象填写的“同一对象”的行合并成**完整的一行**：
+          · 同一行中某格只在某一方有值、其余为空时，合并后该值被补全；
+          · 完全相同的行自然只保留一份（跨所有文件全局生效，不限相邻行）；
+          · 某格在不同文件里都被填了“不同的值”则视为冲突，保留先填写的一方
+            （后填写的值不参与合并，可在勾选“标记来源”后人工核对）；
+        这样既能把所有收集人填写的数据完整合并，又不会因“整行恰好相同”而误删
+        某一方的提交；被合并行的图片固定到保留行，绝不丢失。
       - mark_source=True 时，在末尾新增“收集对象”列标注来源；
       - 原文件中的图片（浮动/未锁定、锚定到单元格、随单元格移动并调整大小，以及
         WPS 以 DISPIMG 公式锚定的“单元格内嵌截图”）在合并后会跟随各自的数据行整体
@@ -673,8 +679,11 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
         img.anchor = OneCellAnchor(
             _from=AnchorMarker(col=col0, row=out_row - 1, colOff=0, rowOff=0))
         if _add_shifted_image(out_ws, img, out_row, col0 + 1, occupied, delta=0):
-            # 图片已就位（避让后可能落到相邻单元格），原公式单元格清空
-            out_ws.cell(row=out_row, column=col0 + 1).value = None
+            # 图片已就位（避让后可能落到相邻单元格）。仅当该格本来就是空或仍是
+            # DISPIMG 公式时才清空，避免把“保留行”里另一收集人填写的真实数据抹掉
+            cur = out_ws.cell(row=out_row, column=col0 + 1).value
+            if cur is None or (isinstance(cur, str) and cur.startswith('=')):
+                out_ws.cell(row=out_row, column=col0 + 1).value = None
             return True
         return False
 
@@ -705,9 +714,12 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
         out_ws.row_dimensions[1].height = header_height
 
     out_row = 2
-    # merge_identical：记录每个“数据列完全相同的行”首次出现的输出行号，
-    # 实现跨所有文件的全局去重（不限相邻行）；重复行的图片固定到首次出现的行
-    seen_rows = {}             # data_key(tuple) -> 该行首次出现的输出行号
+    # merge_identical：以“首列（标识列）”为合并键，把不同收集对象填写的“同一对象”
+    # 的行合并成完整的一行（互补填充），而不是简单地丢弃“整行完全相同”的重复行。
+    # 这样既能把所有收集人填写的数据完整合并，又不会因“整行恰好相同”而误删某一方的提交。
+    key_col = 0                       # 合并键 = 第 1 列（通常为 项目/姓名 等标识）
+    key_vals_empty = (None, '')       # 空键不参与合并，保持各自独立成行
+    kept_by_key = {}                  # 首列值 -> 该行首次出现的输出行号
 
     for fi, f in enumerate(files):
         wb = openpyxl.load_workbook(f['path'])
@@ -738,30 +750,42 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
             if all(v is None for v in row_vals):
                 continue  # 跳过整行空白
 
-            if mark_source:
-                row_vals = row_vals + [f['object_name']]
+            key = row_vals[key_col]   # 合并键（首列值）
 
-            data_key = row_vals[:src_ncols]  # 用于比较“相同行”的键（不含来源列）
-            row_key = tuple(data_key)
-
-            if merge_identical and row_key in seen_rows:
-                # 与之前某文件/某一行完全相同 -> 合并（去重）：不新增输出行，
-                # 把本行图片“固定”到该行首次出现的位置，避免图片丢失
-                kept_row = seen_rows[row_key]
+            if merge_identical and key not in key_vals_empty and key in kept_by_key:
+                # 与之前某文件/行属“同一对象” -> 合并（互补填充），不新增输出行
+                kept_row = kept_by_key[key]
+                for c in range(1, src_ncols + 1):
+                    new_v = row_vals[c - 1]
+                    if new_v in key_vals_empty:
+                        continue
+                    kept_cell = out_ws.cell(row=kept_row, column=c)
+                    if kept_cell.value in key_vals_empty:
+                        # 保留行该格为空 -> 用本次填写的值补全，并复制样式
+                        kept_cell.value = new_v
+                        _copy_cell_style(ws.cell(row=r, column=c), kept_cell)
+                    # 否则保留行已有值（冲突时保留先填写的一方，见 docstring）
+                # 把本行的图片固定到保留行，避免图片丢失
                 for (ir, ic, img) in file_imgs:
                     if ir == r - 1 and id(img) not in placed_ids:
                         if _add_shifted_image(out_ws, img, out_row=kept_row,
                                               out_col=ic + 1, occupied=occupied,
                                               delta=kept_row - r):
                             placed_ids.add(id(img))
-                # 被丢弃行的 WPS DISPIMG 截图同样固定到保留行
+                # 被合并行的 WPS DISPIMG 截图同样固定到保留行
                 for (ir, ic, name) in disp_cells_by_file.get(fi, []):
                     if ir == r - 1:
                         _place_dispimg(kept_row, ic, name)
+                # 标记来源：多个收集对象合并到同一行时，用 “ / ” 连接各自填写的对象
+                if mark_source:
+                    src_cell = out_ws.cell(row=kept_row, column=src_ncols + 1)
+                    src_cell.value = (f'{src_cell.value} / {f["object_name"]}'
+                                      if src_cell.value else f['object_name'])
                 continue
 
             # 写入该行数据（含样式）
-            for c, val in enumerate(row_vals, 1):
+            write_vals = row_vals + ([f['object_name']] if mark_source else [])
+            for c, val in enumerate(write_vals, 1):
                 # DISPIMG 截图公式：清除公式（截图随后转换为真实图片）
                 if isinstance(val, str) and val.startswith('='):
                     m = _DISPIMG_RE.search(val)
@@ -791,8 +815,8 @@ def merge_excel_files(files, merge_identical=False, mark_source=False):
                 if ir == r - 1:
                     _place_dispimg(out_row, ic, name)
 
-            if merge_identical:
-                seen_rows[row_key] = out_row
+            if merge_identical and key not in key_vals_empty:
+                kept_by_key[key] = out_row
             out_row += 1
 
         # 兜底：锚定在「非数据行」（如空白行上的浮动图）的图片，按整块行偏移平移放入，

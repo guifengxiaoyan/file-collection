@@ -136,7 +136,7 @@ check('M3.1 末尾新增“收集对象”列', header[-1] == '收集对象', f'
 rows = [[ws.cell(row=r, column=c).value for c in range(1, ws.max_column + 1)] for r in range(2, ws.max_row + 1)]
 check('M3.2 相邻相同行被合并去重（5 → 4）', len(rows) == 4, f'rows={rows}')
 srcs = [row[-1] for row in rows]
-check('M3.3 来源列标注正确', srcs == ['张三', '张三', '张三', '李四'], f'srcs={srcs}')
+check('M3.3 来源列标注正确', srcs == ['张三', '张三', '张三 / 李四', '李四'], f'srcs={srcs}')
 check('M3.4 被丢弃行的图片固定到保留行（仍 2 张图）', len(ws._images) == 2, f'n={len(ws._images)}')
 img_rows = sorted(im.anchor._from.row for im in ws._images)
 check('M3.5 去重后图片不错位（0-based 行 1 与 3）', img_rows == [1, 3], f'rows={img_rows}')
@@ -152,8 +152,8 @@ names_cross = [ws.cell(row=r, column=1).value for r in range(2, ws.max_row + 1)]
 check('M3.7 修复验证：保留首次出现的行（设备A 只出现一次）',
       names_cross == ['设备A', '设备B', '设备C', '设备D'], f'names={names_cross}')
 srcs_cross = [ws.cell(row=r, column=ws.max_column).value for r in range(2, ws.max_row + 1)]
-check('M3.8 修复验证：全局去重后来源标注正确',
-      srcs_cross == ['张三', '张三', '张三', '李四'], f'srcs={srcs_cross}')
+check('M3.8 修复验证：全局合并后来源标注正确',
+      srcs_cross == ['张三 / 李四', '张三', '张三', '李四'], f'srcs={srcs_cross}')
 
 print()
 print('=' * 70)
@@ -210,6 +210,60 @@ img_rows = sorted(im.anchor._from.row for im in imgs)
 check('M4.6 截图跟随数据行下沉（0-based 行 1 与 4）', img_rows == [1, 4], f'rows={img_rows}')
 img_cols = sorted(im.anchor._from.col for im in imgs)
 check('M4.7 截图锚定列正确（WPS 图第 2 列、张三图第 4 列）', img_cols == [1, 3], f'cols={img_cols}')
+
+print()
+print('=' * 70)
+print('M5. 合并各收集对象的数据（首列键互补合并：完整合并每个人填的数据）')
+print('=' * 70)
+
+def build_xlsx_bytes(rows, header=('项目', '数量', '单价', '金额', '备注')):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = '提交表'
+    for c, h in enumerate(header, 1):
+        ws.cell(row=1, column=c, value=h)
+    for r, row in enumerate(rows, 2):
+        for c, v in enumerate(row, 1):
+            ws.cell(row=r, column=c, value=v)
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
+
+tid6, oids6 = create_theme('互补合并主题', ['张三', '李四'])
+upload(oids6['张三'], 'comp_张三.xlsx', content=build_xlsx_bytes([
+    ['设备A', 2, None, None, '张三填的数量'],
+    ['设备B', 1, 100.0, 100.0, ''],
+]))
+upload(oids6['李四'], 'comp_李四.xlsx', content=build_xlsx_bytes([
+    ['设备A', None, 1500.5, 3001.0, '李四填的单价金额'],
+    ['设备C', 5, 99.0, 495.0, ''],
+]))
+
+# 不勾选：两个 设备A 各成一行（共 4 行）
+r = s.post(BASE + f'/admin/theme/{tid6}/merge-excel', data={})
+wb = load_workbook(io.BytesIO(r.content))
+ws = wb.active
+n_raw = ws.max_row - 1
+check('M5.0 不合并时 4 行（两个 设备A 各一行）', n_raw == 4, f'n={n_raw}')
+
+# 勾选：设备A 互补合并为 1 行，设备B/设备C 各自保留 -> 3 行
+r = s.post(BASE + f'/admin/theme/{tid6}/merge-excel',
+           data={'merge_identical': 'on', 'mark_source': 'on'})
+wb = load_workbook(io.BytesIO(r.content))
+ws = wb.active
+rows = [[ws.cell(row=r, column=c).value for c in range(1, ws.max_column + 1)]
+        for r in range(2, ws.max_row + 1)]
+check('M5.1 互补合并为 3 行（设备A 合并，设备B/设备C 保留）', len(rows) == 3, f'rows={rows}')
+a = next(row for row in rows if row[0] == '设备A')
+check('M5.2 设备A 数量补全自张三(2)', a[1] == 2, f'a={a}')
+check('M5.3 设备A 单价补全自李四(1500.5)', a[2] == 1500.5, f'a={a}')
+check('M5.4 设备A 金额补全自李四(3001.0)', a[3] == 3001.0, f'a={a}')
+check('M5.5 冲突单元格保留先填写方(张三)的备注', a[4] == '张三填的数量', f'a={a}')
+check('M5.6 设备A 来源列标注“张三 / 李四”', a[-1] == '张三 / 李四', f'a={a}')
+check('M5.7 设备B/设备C 仍完整保留',
+      any(row[0] == '设备B' and row[1] == 1 for row in rows)
+      and any(row[0] == '设备C' and row[1] == 5 for row in rows), f'rows={rows}')
 
 print()
 print('=' * 70)

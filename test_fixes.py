@@ -307,7 +307,7 @@ ws = wb.active
 header = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
 check('X3.5 去重+来源列：表头含“收集对象”', header[-1] == '收集对象', f'header={header}')
 srcs = [ws.cell(row=r, column=ws.max_column).value for r in range(2, ws.max_row + 1)]
-check('X3.6 去重+来源列：来源标注正确', srcs == ['张三', '张三', '张三', '李四'], f'srcs={srcs}')
+check('X3.6 去重+来源列：来源标注正确', srcs == ['张三 / 李四', '张三', '张三', '李四'], f'srcs={srcs}')
 
 # 3.7 HTTP 级验证：完整上传后走合并路由
 r = create_theme('X3合并主题', objects_text='张三\n李四')
